@@ -1,0 +1,66 @@
+Acoording to ANSForth and bb4wforth, jonesforth 47 is not
+in compliance with ANS Forth.
+
+Core words with bugs ()
+	/MOD	fixed in jonesforth.S using bb4wforth's version.
+	U.	fixed in jonesforth using bb4wforth's version.
+
+Non standard core words
+	DEPTH	fixed in jonesforth.fs using bb4wforth's version.
+	.S	fixed by ccwu.
+	HERE	implemented by ccwu. jonesforth's HERE is
+		renamed to DP. 
+	ALLOT	fixed by ccwu.
+	CREATE	renamed jonesforth's version to HEADER,
+		ANS version of CREATE implemented using bb4wforth's version.
+	VARIABLE	fixed by ccwu.
+	TRUE	fixed by ccwu. All the comparison words returns -1 for
+		TRUE.
+	FIND	not yet implemented. jonesforth's FIND is renamed to
+		(FIND).
+	WHILE	fixed using bb4wforth's version.
+	REPEAT	fixed using bb4wforth's version.
+	WORD
+	KEY
+	[']	doesn't work on immediate word.
+	'	fixed by ccwu.
+	IMMEDIATE
+
+Core Words not yet implemented
+	DOES>
+	2!		fixed using bb4wforth's version.
+	2*		fixed using bb4wforth's version.
+	2/		fixed using bb4wforth's version.
+	2@		fixed using bb4wforth's version.
+	2OVER		fixed using bb4wforth's version.
+	CELL+		fixed using bb4wforth's version.
+	CHAR+		fixed using bb4wforth's version.
+	CHARS		fixed using bb4wforth's version.
+	MOVE		fixed using bb4wforth's version.
+	[CHAR]		fixed using bb4wforth's version.
+	DO		implemented by ccwu.
+	LOOP		implemented by ccwu.
+	+LOOP		implemented by ccwu.
+	UNLOOP		implemented by ccwu.
+	I		implemented by ccwu.
+	J		implemented by ccwu.
+	LEAVE		implemented by ccwu using a leave stack of depth 31.
+			ABORT or QUIT should reset the leave stack pointer,
+			which is not yet implemented.
+	ABS		implemented by ccwu.
+
+	# #> #S */ */MOD <# >BODY >IN >NUMBER
+	ABORT" ACCEPT COUNT ENVIRONMENT?
+	EVALUATE FILL FM/MOD HOLD M* MAX MIN
+	POSTPONE R@ S>D SIGN SM/REM SOURCE U< UM* UM/MOD
+	LSHIFT RSHIFT 
+
+Core extension words not yet implemented
+	2>R		fixed using bb4wforth's version.
+	2R>		fixed using bb4wforth's version.
+	?DO		implemented by ccwu.
+
+	#TIB .( 2R@ C" COMPILE, CONVERT ERASE EXPECT MARKER
+	PAD PARSE QUERY REFILL RESTORE-INPUT ROLL SAVE-INPUT SOURCE-ID
+	SPAN TIB U> 
+
