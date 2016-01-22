@@ -12,7 +12,7 @@ asm: esp8266.asm
 	${CC} -U__STRICT_ANSI__  -c -x assembler-with-cpp -MMD -DF_CPU=80000000L esp8266.asm
 
 compile: forthright.c
-	${CC} -U__STRICT_ANSI__  -c -MMD -DF_CPU=80000000L -DFORTH_SIZE=65536 -S forthright.c
+	${CC} -U__STRICT_ANSI__  -c -MMD -DF_CPU=80000000L -DDATA_SEGMENT_SIZE=65536 -S forthright.c
 
 link: compile asm
 

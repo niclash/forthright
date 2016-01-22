@@ -16,10 +16,11 @@ extern void start( void*, int, system_t* );
 static void* c_stack_address;
 static void* c_return_address;
 static system_t system;
-static char forthData[FORTH_SIZE];
+static char data_segment[DATA_SEGMENT_SIZE];
 
 void main()
 {
-    c_stack_address = main;
-    start( forthData, FORTH_SIZE, &system );
+    int abc = 676576534;
+    start( data_segment, DATA_SEGMENT_SIZE, &system );
+    int def = abc % 562736182;
 }

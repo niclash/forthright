@@ -5,7 +5,7 @@
    The port is to the ESP-8266 CPU.
 */
 
-	.set JONES_VERSION,47
+	.set FORTHRIGHT_VERSION,48
 /*
 	INTRODUCTION ----------------------------------------------------------------------
 
@@ -171,18 +171,18 @@
 	In this implementation of Forth, the i386 registers are mapped to ESO-8266 registers in the following
 	way (mostly to simplify porting effort);
 
-	+-----------+--------------+-----------------------------------------------------+
-	| i386 Reg  | ESP-8266 Reg | Usage                                               |
-	+-----------+--------------+-----------------------------------------------------+
-	| %eax      |  a8          | Work register                                       |
-	| %ebx      |  a9          | Work register                                       |
-	| %ecx      |  a10         | Work register                                       |
-	| %edx      |  a11         | Work register                                       |
-	| %esp      |  a12         | Not used??                                          |
-	| %ebp      |  a13         | Forth Return Stack pointer                          |
-	| %esi      |  a14         | WORD instruction pointer                            |
-	| %edi      |  a15         | Forth Data Stack pointer                            |
-	+-----------+--------------+-----------------------------------------------------+
+	+--------------+-----------------------------------------------------+
+	| ESP-8266 Reg | Usage                                               |
+	+--------------+-----------------------------------------------------+
+	|  a8          | Work register                                       |
+	|  a9          | Work register                                       |
+	|  a10         | Work register                                       |
+	|  a11         | Work register                                       |
+	|  a12         | Data Segment Pointer                                |
+	|  a13         | Forth Return Stack pointer                          |
+	|  a14         | WORD instruction pointer                            |
+	|  a15         | Forth Data Stack pointer                            |
+	+--------------+-----------------------------------------------------+
 
 	THE DICTIONARY ----------------------------------------------------------------------
 
@@ -500,23 +500,56 @@
 
 /* Macros to deal with the return stack. */
 	.macro PUSHRSP reg
-
 	addi a13, a13, -4	// push reg on to return stack
-	s32i a13, \reg, 0
-
-// Original Code
-//	lea -4(%ebp),%ebp	// push reg on to return stack
-//	movl \reg,(%ebp)
+	s32i \reg, a13, 0
 	.endm
 
 	.macro POPRSP reg
-
-	l32i \reg, a13, 0	// pop top of return stack to reg
 	addi a13, a13, 4
+	l32i \reg, a13, 0	// pop top of return stack to reg
+	.endm
 
-// Original Code
-//	mov (%ebp),\reg		// pop top of return stack to reg
-//	lea 4(%ebp),%ebp
+/* Macros to deal with the data stack. */
+	.macro PUSHDATASTACK reg
+	addi a15, a15, -4	// push reg on to data stack
+	s32i \reg, a15, 0
+	.endm
+
+	.macro POPDATASTACK reg
+	l32i \reg, a15, 0	// pop top of data stack to reg
+	addi a15, a15, 4
+	.endm
+
+	.macro READTOSX reg
+	s32i \reg, a15, 0
+	.endm
+
+	.macro WRITETOSX reg
+	s32i \reg, a15, 0
+	.endm
+
+	.macro READTOSY reg
+	s32i \reg, a15, 0
+	.endm
+
+	.macro WRITETOSY reg
+	s32i \reg, a15, 0
+	.endm
+
+	.macro READTOSZ reg
+	s32i \reg, a15, 0
+	.endm
+
+	.macro WRITETOSZ reg
+	s32i \reg, a15, 0
+	.endm
+
+	.macro READTOST reg
+	s32i \reg, a15, 0
+	.endm
+
+	.macro WRITETOST reg
+	s32i \reg, a15, 0
 	.endm
 
 /*
@@ -622,29 +655,8 @@ stack points ->	| addr of DOUBLE   |	   + 4 =   +------------------+
 		a4	returnStackSize
 		a5	systemResources pointter
 */
-	.comm	c_stack_address,4,4
-	.comm	c_return_address,4,4
-	.comm	dataSegmentPointer,4,4
-	.comm	dataSegmentSize,4,4
-	.comm	systemResources,4,4
-
 _start:
-	l32r a8, c_stack_address
-	s32i a1, a8, 0				// Save the initial stack pointer in FORTH variable S0.
-
-	l32r a8, c_return_address
-	s32i a0, a8, 0				// Save the C return address
-
-	l32r a8, dataSegmentPointer
-	s32i a2, a8, 0
-
-	l32r a8, dataSegmentSize
-	s32i a3, a8, 0
-
-	l32r a8, systemResources
-	s32i a4, a8, 0
-
-	call0 set_up_data_segment
+	call0 initialize
 
 	.literal .COLDSTART, cold_start
 	l32r a14, .COLDSTART		// Initialise interpreter.
@@ -785,162 +797,115 @@ code_\label :			// assembler code follows
 */
 
 	defcode "DROP",4,,DROP
-	addi a14,a14,4		// drop top of stack
-
-// Original i386 Code
-//	pop %eax		// drop top of stack
+	addi a15,a15,4		// drop top of stack
 	NEXT
 
 	defcode "SWAP",4,,SWAP
-	l32i a8, a14, 0		// load TOS to a8
-	l32i a9, a14, 4		// load TOS-1 to a9
-	s32i a8, a14, 4		// store a8 to TOS-1
-	s32i a9, a14, 0		// store a9 to TOS
-
-// Original i386 Code
-//	pop %eax		// swap top two elements on stack
-//	pop %ebx
-//	push %eax
-//	push %ebx
+	READTOSX a8
+	READTOSY a9
+	WRITETOSX a9
+	WRITETOSY a8
 	NEXT
 
 	defcode "DUP",3,,DUP
-	l32i a8, a14, 0		// load TOS to a8
-	addi a14, a14, -4	// move TOS pointer +1 entry
-	s32i a8, a14, 0		// store a8 to TOS
-
-// Original i386 Code
-//	mov (%esp),%eax		// duplicate top of stack
-//	push %eax
+	READTOSX a8
+	PUSHDATASTACK a8
 	NEXT
 
 	defcode "OVER",4,,OVER
-	l32i a8, a14, 4		// get the second element of stack
-	addi a14, a14, -4	// move TOS pointer +1 entry
-	s32i a8, a14, 0		// store a8 to TOS
-
-// Original i386 Code
-//	mov 4(%esp),%eax	// get the second element of stack
-//	push %eax		// and push it on top
+	READTOSY a8
+	PUSHDATASTACK a8
 	NEXT
 
 	defcode "ROT",3,,ROT
-	l32i a8, a14, 0		// load TOS to a8
-	l32i a9, a14, 4		// load TOS-1 to a9
-	l32i a10, a14, 8	// load TOS-2 to a10
-	s32i a8, a14, 4		// store a8 to TOS-1
-	s32i a9, a14, 8		// store a9 to TOS-2
-	s32i a10, a14, 0	// store a10 to TOS
-
-// Original i386 Code
-//	pop %eax
-//	pop %ebx
-//	pop %ecx
-//	push %ebx
-//	push %eax
-//	push %ecx
+	READTOSX a8
+	READTOSY a9
+	READTOSZ a10
+	WRITETOSZ a9
+	WRITETOSY a8
+	WRITETOSX a10
 	NEXT
 
 	defcode "-ROT",4,,NROT
-	l32i a8, a14, 0		// load TOS to a8
-	l32i a9, a14, 4		// load TOS-1 to a9
-	l32i a10, a14, 8	// load TOS-2 to a10
-	s32i a8, a14, 8		// store a8 to TOS-2
-	s32i a9, a14, 0		// store a9 to TOS
-	s32i a10, a14, 4	// store a10 to TOS-1
-
-// Original i386 Code
-//	pop %eax
-//	pop %ebx
-//	pop %ecx
-//	push %eax
-//	push %ecx
-//	push %ebx
+	READTOSX a8
+	READTOSY a9
+	READTOSZ a10
+	WRITETOSZ a8
+	WRITETOSY a10
+	WRITETOSX a9
 	NEXT
 
 	defcode "2DROP",5,,TWODROP // drop top two elements of stack
-	addi a14,a14,8		// drop 2 entries of top of stack
-
-// Original i386 Code
-//	pop %eax
-//	pop %eax
+	addi a15,a15,8		// drop 2 entries of top of stack
 	NEXT
 
 	defcode "2DUP",4,,TWODUP // duplicate top two elements of stack
-	l32i a8, a14, 0		// load TOS to a8
-	l32i a9, a14, 4		// load TOS-1 to a9
-	addi a14, a14, -8	// move TOS pointer +1 entry
-	s32i a8, a14, 0		// store a8 to TOS
-	s32i a9, a14, 4		// store a9 to TOS-1
-
-// Original i386 Code
-//	mov (%esp),%eax
-//	mov 4(%esp),%ebx
-//	push %ebx
-//	push %eax
-//	NEXT
+	READTOSX a8
+	READTOSX a9
+	PUSHDATASTACK a9
+	PUSHDATASTACK a8
+	NEXT
 
 	defcode "2SWAP",5,,TWOSWAP // swap top two pairs of elements of stack
-	l32i a8, a14, 0		// load TOS to a8
-	l32i a9, a14, 4		// load TOS-1 to a9
-	l32i a10, a14, 8	// load TOS-2 to a10
-	l32i a11, a14, 12	// load TOS-3 to a11
-	s32i a10, a14, 0	// store a10 to TOS
-	s32i a11, a14, 4	// store a11 to TOS-1
-	s32i a8, a14, 8		// store a8 to TOS-2
-	s32i a9, a14, 12	// store a9 to TOS-3
-
-// Original i386 Code
-//	pop %eax
-//	pop %ebx
-//	pop %ecx
-//	pop %edx
-//	push %ebx
-//	push %eax
-//	push %edx
-//	push %ecx
+	READTOSX a8
+	READTOSY a9
+	READTOSZ a10
+	READTOST a11
+	WRITETOSX a10
+	WRITETOSY a11
+	WRITETOSZ a8
+	WRITETOST a9
 	NEXT
 
 	defcode "?DUP",4,,QDUP	// duplicate top of stack if non-zero
-
-// Original i386 Code
-//	movl (%esp),%eax
-//	test %eax,%eax
-//	jz 1f
-//	push %eax
-1:	NEXT
+	READTOSX a8
+	beqz a8, L1
+	PUSHDATASTACK a8
+L1:	NEXT
 
 	defcode "1+",2,,INCR
-	incl (%esp)		// increment top of stack
+	READTOSX a8
+	addi a8, a8, 1		// add 1
+	WRITETOSX a8
 	NEXT
 
 	defcode "1-",2,,DECR
-	decl (%esp)		// decrement top of stack
+	READTOSX a8
+	addi a8, a8, -1		// add -1
+	WRITETOSX a8
 	NEXT
 
 	defcode "4+",2,,INCR4
-	addl $4,(%esp)		// add 4 to top of stack
+	READTOSX a8
+	addi a8, a8, 4		// add 4
+	WRITETOSX a8
 	NEXT
 
 	defcode "4-",2,,DECR4
-	subl $4,(%esp)		// subtract 4 from top of stack
+	READTOSX a8
+	addi a8, a8, -4		// add -4
+	WRITETOSX a8
 	NEXT
 
 	defcode "+",1,,ADD
-	pop %eax		// get top of stack
-	addl %eax,(%esp)	// and add it to next word on stack
+	POPDATASTACK a8
+	READTOSX a9
+	add a8, a8, a9		// Add
+	WRITETOSX a8
 	NEXT
 
 	defcode "-",1,,SUB
-	pop %eax		// get top of stack
-	subl %eax,(%esp)	// and subtract it from next word on stack
+	POPDATASTACK a8
+	READTOSX a9
+	sub a8, a8, a9		// Subtract
+	WRITETOSX a8
 	NEXT
 
 	defcode "*",1,,MUL
-	pop %eax
-	pop %ebx
-	imull %ebx,%eax
-	push %eax		// ignore overflow
+	POPDATASTACK a8
+	READTOSX a9
+	mull a8, a8, a9		// Multiply
+	WRITETOSX a8
 	NEXT
 
 /*
@@ -948,6 +913,9 @@ code_\label :			// assembler code follows
 	terms of the primitives /MOD and U/MOD.  The design of the i386 assembly instructions idiv and div which
 	leave both quotient and remainder makes this the obvious choice.
 */
+
+/* Taking these two WORDS out, as they are not as neatly implemented on ESP8266 as they are for i386.
+   Will later see what is depending on these, and move those WORDS into the native space instead.
 
 	defcode "/MOD",4,,DIVMOD
 	pop %ebx
@@ -966,6 +934,7 @@ code_\label :			// assembler code follows
 	push %edx	// push remainder
 	push %eax	// push quotient
 	NEXT
+*/
 
 /*
 	Lots of comparison operations like =, <, >, etc..
@@ -977,136 +946,135 @@ code_\label :			// assembler code follows
 */
 
 	defcode "=",1,,EQU	// top two words are equal?
-	pop %eax
-	pop %ebx
-	cmp %ebx,%eax
-	sete %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	POPDATASTACK a8
+	READTOSX a9
+        movi a10,0		// Set a10 to FALSE
+	bne a8, a9, L2		// If Not Equal, branch
+	movi a10, -1		// Set a10 to TRUE
+L2:	WRITETOSX a10
 	NEXT
 
 	defcode "<>",2,,NEQU	// top two words are not equal?
-	pop %eax
-	pop %ebx
-	cmp %ebx,%eax
-	setne %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	POPDATASTACK a8
+	READTOSX a9
+	movi a10,0		// Set a10 to FALSE
+	beq a8,a9, L3		// If Equal, branch
+	movi a10, -1		// Set a10 to TRUE
+L3:	WRITETOSX a10
 	NEXT
 
 	defcode "<",1,,LT
-	pop %eax
-	pop %ebx
-	cmp %eax,%ebx
-	setl %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	POPDATASTACK a8
+	READTOSX a9
+	movi a10, 0		// Set a10 to FALSE
+	bge a9, a8, L4		// If a9 >= a8, branch
+	movi a10, -1		// Set a10 to TRUE
+L4:	WRITETOSX a10
 	NEXT
 
 	defcode ">",1,,GT
-	pop %eax
-	pop %ebx
-	cmp %eax,%ebx
-	setg %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	POPDATASTACK a8
+	READTOSX a9
+	movi a10, 0		// Set a10 to FALSE
+	bge a8, a9, L5		// If a8 >= a9, branch
+	movi a10, -1		// Set a10 to TRUE
+L5:	WRITETOSX a10
 	NEXT
 
 	defcode "<=",2,,LE
-	pop %eax
-	pop %ebx
-	cmp %eax,%ebx
-	setle %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	POPDATASTACK a8
+	READTOSX a9
+	addi a15,a15,4		// Remove one entry from stack
+	movi a10, 0		// Set a10 to FALSE
+	blt a8, a9, L6		// If a8 < a9, branch
+	movi a10, -1		// Set a10 to TRUE
+L6:	WRITETOSX a10
 	NEXT
 
 	defcode ">=",2,,GE
-	pop %eax
-	pop %ebx
-	cmp %eax,%ebx
-	setge %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	POPDATASTACK a8
+	READTOSX a9
+	movi a10, 0		// Set a10 to FALSE
+	blt a9, a8, L7		// If a9 < a8 , branch
+	movi a10, -1		// Set a10 to TRUE
+L7:	WRITETOSX a10
 	NEXT
 
 	defcode "0=",2,,ZEQU	// top of stack equals 0?
-	pop %eax
-	test %eax,%eax
-	setz %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	READTOSX a8
+	movi a9, -1		// Set result to TRUE
+	beqz a8, L8		// Test if TOS was 0, jump if so,
+	movi a9, 0		// Set result to FALSE
+L8:	WRITETOSX a9
 	NEXT
 
 	defcode "0<>",3,,ZNEQU	// top of stack not 0?
-	pop %eax
-	test %eax,%eax
-	setnz %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	READTOSX a8
+	movi a9, -1		// Set result to TRUE
+	bnez a8, L9		// Test if TOS was NOT 0, jump if so,
+	movi a9, 0		// Set result to FALSE
+L9:	WRITETOSX a9
 	NEXT
 
 	defcode "0<",2,,ZLT	// comparisons with 0
-	pop %eax
-	test %eax,%eax
-	setl %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	READTOSX a8
+	movi a9, 0		// Set result to FALSE
+	bge a8, a9, L10		// Test if TOS >= 0, jump if so,
+	movi a9, -1		// Set result to TRUE
+L10:	WRITETOSX a9
 	NEXT
 
 	defcode "0>",2,,ZGT
-	pop %eax
-	test %eax,%eax
-	setg %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	READTOSX a8
+	movi a9, 0		// Set result to FALSE
+	bge a9, a8, L11		// Test if 0 >= TOS, jump if so,
+	movi a9, -1		// Set result to TRUE
+L11:	WRITETOSX a9
 	NEXT
 
 	defcode "0<=",3,,ZLE
-	pop %eax
-	test %eax,%eax
-	setle %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	READTOSX a8
+	movi a9, 0		// Set result to FALSE
+	blt a9, a8, L12		// Test if 0 < TOS, jump if so,
+	movi a9, -1		// Set result to TRUE
+L12:	WRITETOSX a9
 	NEXT
 
 	defcode "0>=",3,,ZGE
-	pop %eax
-	test %eax,%eax
-	setge %al
-	movzbl %al,%eax
-	neg %eax
-	pushl %eax
+	READTOSX a8
+	movi a9, 0		// Set result to FALSE
+	blt a8, a9, L13		// Test if TOS < 0, jump if so,
+	movi a9, -1		// Set result to TRUE
+L13:	WRITETOSX a9
 	NEXT
 
 	defcode "AND",3,,AND	// bitwise AND
-	pop %eax
-	andl %eax,(%esp)
+	POPDATASTACK a8
+	READTOSX a9
+	and a8, a8, a9		// And
+	WRITETOSX a8
 	NEXT
 
 	defcode "OR",2,,OR	// bitwise OR
-	pop %eax
-	orl %eax,(%esp)
+	POPDATASTACK a8
+	READTOSX a9
+	or a8, a8, a9		// Or
+	WRITETOSX a8
 	NEXT
 
 	defcode "XOR",3,,XOR	// bitwise XOR
-	pop %eax
-	xorl %eax,(%esp)
+	POPDATASTACK a8
+	READTOSX a9
+	xor a8, a8, a9		// Xor
+	WRITETOSX a8
 	NEXT
 
 	defcode "INVERT",6,,INVERT // this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
-	notl (%esp)
+	READTOSX a8
+	movi a9, 0		// load a9 with zero
+	addi a9, a9, -1		// a9 is now all zero
+	xor a8, a8, a9		// Negate all bits
+	WRITETOSX a8
 	NEXT
 
 /*
@@ -1133,7 +1101,7 @@ code_\label :			// assembler code follows
 */
 
 	defcode "EXIT",4,,EXIT
-	POPRSP %esi		// pop return stack into %esi
+	POPRSP a14		// pop return stack into %esi
 	NEXT
 
 /*
@@ -1183,11 +1151,15 @@ code_\label :			// assembler code follows
 */
 
 	defcode "LIT",3,,LIT
-	// %esi points to the next command, but in this case it points to the next
-	// literal 32 bit integer.  Get that literal into %eax and increment %esi.
-	// On x86, it's a convenient single byte instruction!  (cf. NEXT macro)
-	lodsl
-	push %eax		// push the literal number on to stack
+	l32i a8, a14, 0		// Get next command
+	PUSHDATASTACK a8
+
+// Original i386 Code
+//	// %esi points to the next command, but in this case it points to the next
+//	// literal 32 bit integer.  Get that literal into %eax and increment %esi.
+//	// On x86, it's a convenient single byte instruction!  (cf. NEXT macro)
+//	lodsl
+//	push %eax		// push the literal number on to stack
 	NEXT
 
 /*
@@ -1199,67 +1171,72 @@ code_\label :			// assembler code follows
 */
 
 	defcode "!",1,,STORE
-	pop %ebx		// address to store at
-	pop %eax		// data to store there
-	mov %eax,(%ebx)		// store it
+	POPDATASTACK a8		// address to store at
+	POPDATASTACK a9		// data to store there
+	s32i a9, a8, 0		// store it
 	NEXT
 
 	defcode "@",1,,FETCH
-	pop %ebx		// address to fetch
-	mov (%ebx),%eax		// fetch it
-	push %eax		// push value onto stack
+	POPDATASTACK a8		// address to fetch
+	l32i a9, a8, 0		// fetch it
+	PUSHDATASTACK a9	// push value onto stack
 	NEXT
 
 	defcode "+!",2,,ADDSTORE
-	pop %ebx		// address
-	pop %eax		// the amount to add
-	addl %eax,(%ebx)	// add it
+	POPDATASTACK a8		// address
+	POPDATASTACK a9		// the amount to add
+	l32i a10, a8, 0		// fetch it
+	add a10, a10, a9	// add
+	s32i a10, a8, 0		// store it back
 	NEXT
 
 	defcode "-!",2,,SUBSTORE
-	pop %ebx		// address
-	pop %eax		// the amount to subtract
-	subl %eax,(%ebx)	// add it
+	POPDATASTACK a8		// address
+	POPDATASTACK a9		// the amount to subtract
+	l32i a10, a8, 0		// fetch it
+	sub a10, a10, a9	// subtract
+	s32i a10, a8, 0		// store it back
 	NEXT
 
 /*
 	! and @ (STORE and FETCH) store 32-bit words.  It's also useful to be able to read and write bytes
 	so we also define standard words C@ and C!.
-
 	Byte-oriented operations only work on architectures which permit them (i386 is one of those).
  */
 
 	defcode "C!",2,,STOREBYTE
-	pop %ebx		// address to store at
-	pop %eax		// data to store there
-	movb %al,(%ebx)		// store it
+	POPDATASTACK a8		// address to store at
+	POPDATASTACK a9		// data to store there
+	s8i a9, a8, 0		// store it
 	NEXT
 
 	defcode "C@",2,,FETCHBYTE
-	pop %ebx		// address to fetch
-	xor %eax,%eax
-	movb (%ebx),%al		// fetch it
-	push %eax		// push value onto stack
+	POPDATASTACK a8		// address to fetch
+	l8ui a9, a8, 0		// fetch it
+	PUSHDATASTACK a9	// push value onto stack
 	NEXT
 
 /* C@C! is a useful byte copy primitive. */
 	defcode "C@C!",4,,CCOPY
-	movl 4(%esp),%ebx	// source address
-	movb (%ebx),%al		// get source character
-	pop %edi		// destination address
-	stosb			// copy to destination
-	push %edi		// increment destination address
-	incl 4(%esp)		// increment source address
+	READTOSX a8		// read destination address
+	READTOSY a9		// read source address
+	l8ui a10, a9, 0		// fetch
+	s8i a10, a8, 0		// store
+	addi a8, a8, 1		// inc dest address
+	addi a9, a8, 1		// inc source address
+	WRITETOSX a8		// write destination address
+	WRITETOSY a9		// write source address
 	NEXT
 
 /* and CMOVE is a block copy operation. */
 	defcode "CMOVE",5,,CMOVE
-	mov %esi,%edx		// preserve %esi
-	pop %ecx		// length
-	pop %edi		// destination address
-	pop %esi		// source address
-	rep movsb		// copy source to destination
-	mov %edx,%esi		// restore %esi
+	POPDATASTACK a8		// length
+	POPDATASTACK a9		// destination address
+	POPDATASTACK a10	// source address
+L14:	l8ui a11,a10,0		// fetch a byte
+	s8i a11,a9,0		// store the byte
+	addi a8, a8, -1		// decrement
+	bnez a8, L14		// loop
 	NEXT
 
 /*
@@ -1279,7 +1256,8 @@ code_\label :			// assembler code follows
 
 	.macro defvar name, namelen, flags=0, label, initial=0
 	defcode \name,\namelen,\flags,\label
-	push $var_\name
+	l32r a8, $var_\name
+	PUSHDATASTACK a8
 	NEXT
 	.data
 	.align 4
@@ -1326,17 +1304,19 @@ var_\name :
 
 	.macro defconst name, namelen, flags=0, label, value
 	defcode \name,\namelen,\flags,\label
-	push $\value
+	movi a8, $\value
+	PUSHDATASTACK a8
 	NEXT
 	.endm
 
-	defconst "VERSION",7,,VERSION,JONES_VERSION
+	defconst "VERSION",7,,VERSION,FORTHRIGHT_VERSION
 	defconst "R0",2,,RZ,return_stack_top
 	defconst "DOCOL",5,,__DOCOL,DOCOL
 	defconst "F_IMMED",7,,__F_IMMED,F_IMMED
 	defconst "F_HIDDEN",8,,__F_HIDDEN,F_HIDDEN
 	defconst "F_LENMASK",9,,__F_LENMASK,F_LENMASK
 
+/* No system support
 	defconst "SYS_EXIT",8,,SYS_EXIT,__NR_exit
 	defconst "SYS_OPEN",8,,SYS_OPEN,__NR_open
 	defconst "SYS_CLOSE",9,,SYS_CLOSE,__NR_close
@@ -1353,7 +1333,7 @@ var_\name :
 	defconst "O_TRUNC",7,,__O_TRUNC,01000
 	defconst "O_APPEND",8,,__O_APPEND,02000
 	defconst "O_NONBLOCK",10,,__O_NONBLOCK,04000
-
+*/
 /*
 	RETURN STACK ----------------------------------------------------------------------
 
@@ -1362,25 +1342,25 @@ var_\name :
 */
 
 	defcode ">R",2,,TOR
-	pop %eax		// pop parameter stack into %eax
-	PUSHRSP %eax		// push it on to the return stack
+	POPDATASTACK a8		// pop parameter stack into a8
+	PUSHRSP a8		// push it on to the return stack
 	NEXT
 
 	defcode "R>",2,,FROMR
-	POPRSP %eax		// pop return stack on to %eax
-	push %eax		// and push on to parameter stack
+	POPRSP a8		// pop return stack on to a8
+	PUSHDATASTACK a8	// and push on to parameter stack
 	NEXT
 
 	defcode "RSP@",4,,RSPFETCH
-	push %ebp
+	PUSHSTACK a13
 	NEXT
 
 	defcode "RSP!",4,,RSPSTORE
-	pop %ebp
+	POPSTACK a13
 	NEXT
 
 	defcode "RDROP",5,,RDROP
-	addl $4,%ebp		// pop return stack and throw away
+	addi a13, a13, 4		// pop return stack and throw away
 	NEXT
 
 /*
@@ -1391,12 +1371,11 @@ var_\name :
 */
 
 	defcode "DSP@",4,,DSPFETCH
-	mov %esp,%eax
-	push %eax
+	PUSHDATASTACK a15
 	NEXT
 
 	defcode "DSP!",4,,DSPSTORE
-	pop %esp
+	POPDATASTACK a15
 	NEXT
 
 /*
@@ -2499,39 +2478,40 @@ interpret_is_lit:
 	NEXT
 
 	defcode "EXECUTE",7,,EXECUTE
-	pop %eax		// Get xt into %eax
-	jmp *(%eax)		// and jump to it.
+	POPDATASTACK a8		// Get xt into a8
+	l32i a8, a8, 0		// Load the address from memory
+	jx a8			// Jump to that address
 				// After xt runs its NEXT will continue executing the current word.
 
-	defcode "SYSCALL3",8,,SYSCALL3
-	pop %eax		// System call number (see <asm/unistd.h>)
-	pop %ebx		// First parameter.
-	pop %ecx		// Second parameter
-	pop %edx		// Third parameter
-	int $0x80
-	push %eax		// Result (negative for -errno)
-	NEXT
+//	defcode "SYSCALL3",8,,SYSCALL3
+//	pop %eax		// System call number (see <asm/unistd.h>)
+//	pop %ebx		// First parameter.
+//	pop %ecx		// Second parameter
+//	pop %edx		// Third parameter
+//	int $0x80
+//	push %eax		// Result (negative for -errno)
+//	NEXT
 
-	defcode "SYSCALL2",8,,SYSCALL2
-	pop %eax		// System call number (see <asm/unistd.h>)
-	pop %ebx		// First parameter.
-	pop %ecx		// Second parameter
-	int $0x80
-	push %eax		// Result (negative for -errno)
-	NEXT
+//	defcode "SYSCALL2",8,,SYSCALL2
+//	pop %eax		// System call number (see <asm/unistd.h>)
+//	pop %ebx		// First parameter.
+//	pop %ecx		// Second parameter
+//	int $0x80
+//	push %eax		// Result (negative for -errno)
+//	NEXT
 
-	defcode "SYSCALL1",8,,SYSCALL1
-	pop %eax		// System call number (see <asm/unistd.h>)
-	pop %ebx		// First parameter.
-	int $0x80
-	push %eax		// Result (negative for -errno)
-	NEXT
+//	defcode "SYSCALL1",8,,SYSCALL1
+//	pop %eax		// System call number (see <asm/unistd.h>)
+//	pop %ebx		// First parameter.
+//	int $0x80
+//	push %eax		// Result (negative for -errno)
+//	NEXT
 
-	defcode "SYSCALL0",8,,SYSCALL0
-	pop %eax		// System call number (see <asm/unistd.h>)
-	int $0x80
-	push %eax		// Result (negative for -errno)
-	NEXT
+//	defcode "SYSCALL0",8,,SYSCALL0
+//	pop %eax		// System call number (see <asm/unistd.h>)
+//	int $0x80
+//	push %eax		// Result (negative for -errno)
+//	NEXT
 
 /*
 	DATA SEGMENT ----------------------------------------------------------------------
@@ -2557,46 +2537,81 @@ interpret_is_lit:
 
 	You don't need to worry about this code.
 */
+	.macro VAR_ADDR reg, address
+	.literal .ADDR_\address, \address
+	l32r \reg, .ADDR_\address
+	.endm
+
+	.macro READ_VAR reg, address
+	.literal .ADDR_\address, \address
+	l32r \reg, .ADDR_\address
+	l32i \reg, \reg, 0
+	.endm
+
+	.macro WRITE_VAR reg, free_reg, address
+	.literal .ADDR_\address, \address
+	l32r \free_reg, .ADDR_\address
+	l32i \reg, \free_reg, 0
+	.endm
+
+	.local
+	.comm	c_stack_address,4,4		// The Stack Pointer at Entry to Assembler
+	.comm	c_return_address,4,4		// The Return address to the C bootstrapper
+	.comm	data_segment_pointer,4,4	// Points to the first byte in the Data Segment
+	.comm	data_segment_size,4,4		// The total size of the Data Segment
+	.comm	data_segment_top,4,4		// Points to the first byte beyond the Data Segment
+	.comm	return_stack_bottom,4,4		// Points to the first byte beyond the Return Stack's starting point
+	.comm	return_stack_size,4,4		// Points to the first byte beyond the Return Stack's starting point
+	.comm	data_stack_bottom,4,4		// Points to the first byte beyond the Data Stack's starting point
+	.comm	data_stack_size,4,4		// Points to the first byte beyond the Data Stack's starting point
+	.comm	data_stack_top,4,4		// Points to the last byte inside the Data Stack (lower memory)
+	.comm	system_resources,4,4		// Points to the Structure of System Resources
+
 	.text
-set_up_data_segment:
+initialize:
 	// a0 Return address
 	// a2 Data Segment Pointer
 	// a3 Data Segment Size in bytes
-	// a4 Return stack size in bytes
-	addi a13, a2, a3 		// Return Stack Pointer = Pointer + Size (one byte outside the available space)
-	addi a13, a13, -4		// Move RSP to point to the LAST word in the segment
-	sub a14, a13, a4		// Set Data Stack Pointer (DSP) return stack size bytes lower in memory.
+	// a4 Data stack size in bytes
+	// a5 Return stack size in bytes
+
+	VAR_ADDR a8, c_stack_address
+	s32i a1, a8, 0				// Save the initial stack pointer in FORTH variable S0.
+
+	VAR_ADDR a8, c_return_address
+	s32i a0, a8, 0				// Save the C return address
+
+
+	VAR_ADDR a8, data_segment_pointer
+	s32i a2, a8, 0				// Save the Data Segment start address
+
+	WRITE_VAR a3, a8, data_segment_size	// Save the size of the Data Segment
+
+	VAR_ADDR a8, systemResources
+	s32i a4, a8, 0
+
+	addi a13, a2, a3 		// Return Stack Pointer = Pointer + Size
+					// NOTE: The RSP points outside the data segment, as the pointer is defined
+					//	 to point at the TopOfStack and initially the Stack is empty. Upon
+					//	 PUSHRSP the pointer is first moved, then filled with data.
+
+	WRITE_VAR a13, a8, data_segment_top	// Save Data Segment bottom
+
+	WRITE_VAR a5, a8, return_stack_size	// Save the size of Return Stack
+	WRITE_VAR a13, a8, return_stack_bottom	// Save bottom of Return Stack
+
+	sub a15, a13, a4			// Set Data Stack Pointer (DSP) return stack size bytes lower in memory.
+						// NOTE: DSP points at the last available position in the RSP, as the
+						//	 pointer is defined to point at the TopOfStack and initially the
+						//	 Stack is empty. Upon PUSHDATASTACK the pointer is first moved,
+						//	 then filled with data.
+	WRITE_VAR a15, a8, data_stack_bottom
+	WRITE_VAR a15, a4, data_stack_size
+
+	sub a9, a15, a4				// Allocate the space for the Data Stack
+	WRITE_VAR a9, a8, data_stack_bottom	// Save the last position available in data stack.
+
 	ret
-
-//set_up_data_segment:
-//	xor %ebx,%ebx		// Call brk(0)
-//	movl $__NR_brk,%eax
-//	int $0x80
-//	movl %eax,var_DP	// Initialise DP to point at beginning of data segment.
-//	addl $INITIAL_DATA_SEGMENT_SIZE,%eax	// Reserve nn bytes of memory for initial data segment.
-//	movl %eax,%ebx		// Call brk(DP+INITIAL_DATA_SEGMENT_SIZE)
-//	movl $__NR_brk,%eax
-//	int $0x80
-//	ret
-
-/*
-	We allocate static buffers for the return static and input buffer (used when
-	reading in files and text that the user types in).
-*/
-	.set RETURN_STACK_SIZE,8192
-	.set BUFFER_SIZE,4096
-
-	.bss
-/* FORTH return stack. */
-	.align 4096
-return_stack:
-	.space RETURN_STACK_SIZE
-return_stack_top:		// Initial top of return stack.
-
-/* This is used as a temporary input buffer when reading from files or the terminal. */
-	.align 4096
-buffer:
-	.space BUFFER_SIZE
 
 /*
 	START OF FORTH CODE ----------------------------------------------------------------------
