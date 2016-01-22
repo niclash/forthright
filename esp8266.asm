@@ -4,6 +4,7 @@
 
    The port is to the ESP-8266 CPU.
 */
+	.include "esp8266.ainc"
 
 	.set FORTHRIGHT_VERSION,48
 /*
@@ -178,9 +179,9 @@
 	|  a9          | Work register                                       |
 	|  a10         | Work register                                       |
 	|  a11         | Work register                                       |
-	|  a12         | Data Segment Pointer                                |
+	|  a12         | System Environment pointer                          |
 	|  a13         | Forth Return Stack pointer                          |
-	|  a14         | WORD instruction pointer                            |
+	|  a14         | Forth Instruction pointer                           |
 	|  a15         | Forth Data Stack pointer                            |
 	+--------------+-----------------------------------------------------+
 
@@ -1262,6 +1263,7 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	.data
 	.align 4
 var_\name :
+	.literal ADDR_\name, var_\name
 	.int \initial
 	.endm
 
@@ -1277,7 +1279,7 @@ var_\name :
 */
 	defvar "STATE",5,,STATE
 	defvar "DP",2,,DP
-	defvar "LATEST",6,,LATEST,name_SYSCALL0 // SYSCALL0 must be last in built-in dictionary
+	defvar "LATEST",6,,LATEST,name_EXECUTE // EXECUTE must be last in built-in dictionary
 	defvar "S0",2,,SZ
 	defvar "BASE",4,,BASE,10
 
@@ -1352,11 +1354,11 @@ var_\name :
 	NEXT
 
 	defcode "RSP@",4,,RSPFETCH
-	PUSHSTACK a13
+	PUSHDATASTACK a13
 	NEXT
 
 	defcode "RSP!",4,,RSPSTORE
-	POPSTACK a13
+	POPDATASTACK a13
 	NEXT
 
 	defcode "RDROP",5,,RDROP
@@ -1416,44 +1418,45 @@ var_\name :
 	<---------------------- BUFFER_SIZE (4096 bytes) ---------------------->
 */
 
+	DECL_VAR currkey,4,4		// Pointer to next key in buffer
+	DECL_VAR bufftop,4,4		// Pointer to next key in buffer
+
+	.text
 	defcode "KEY",3,,KEY
-	call _KEY
-	push %eax		// push return value on stack
+	call0 _KEY
+	PUSHDATASTACK a2		// push return value on stack
 	NEXT
 _KEY:
-	mov (currkey),%ebx
-	cmp (bufftop),%ebx
-	jge 1f			// exhausted the input buffer?
-	xor %eax,%eax
-	mov (%ebx),%al		// get next key from input buffer
-	inc %ebx
-	mov %ebx,(currkey)	// increment currkey
+	READ_VAR a8, currkey
+	READ_VAR a9, bufftop
+	bge a8, a9, L15
+	l8ui a2, a8, 0			// get next key from input buffer
+	addi a8, a8, 1		// increment currkey
+	WRITE_VAR a8, a9, currkey	// save currkey
 	ret
 
-1:	// Out of input; use read(2) to fetch more input from stdin.
-	xor %ebx,%ebx		// 1st param: stdin
-	mov $buffer,%ecx	// 2nd param: buffer
-	mov %ecx,currkey
-	mov $BUFFER_SIZE,%edx	// 3rd param: max length
-	mov $__NR_read,%eax	// syscall: read
-	int $0x80
-	test %eax,%eax		// If %eax <= 0, then exit.
-	jbe 2f
-	addl %eax,%ecx		// buffer+%eax = bufftop
-	mov %ecx,bufftop
-	jmp _KEY
+L15:	// Out of input; use read(2) to fetch more input from C routine readChar().
+	l32i a2, a12, system_t_input_buffer
+	l32i a3, a12, system_t_input_buffer_size
 
-2:	// Error or end of input: exit the program.
-	xor %ebx,%ebx
-	mov $__NR_exit,%eax	// syscall: exit
-	int $0x80
+	// Here we are already one subroutine down, so we need to save the return address on the stack.
+	addi sp, sp, -4			// adjust stack pointer
+	s32i a0, sp, 4			// save return address
+	call0 readChars			// call C readChars()
+	l32i a0, sp, 4			// get the saved return address
+	addi sp, sp, 4			// restore stack pointer
 
-	.data
-	.align 4
-currkey:
-	.int buffer		// Current place in input buffer (next character to read).
-bufftop:
-	.int buffer		// Last valid data in input buffer + 1.
+	movi a10, 0			// Set
+	blt a2, a10, EXIT_TO_C		// If an error is returned, abort and exit Forth
+	add a9, a2, a8			// compute bufftop
+	WRITE_VAR a9, a8, bufftop	// save bufftop
+	j _KEY
+
+EXIT_TO_C:	// Error or end of input: exit the program.
+	READ_VAR a0, c_return_address
+	READ_VAR a1, c_stack_address
+	ret
+
 
 /*
 	By contrast, output is much simpler.  The FORTH word EMIT writes out a single byte to stdout.
@@ -1462,25 +1465,16 @@ bufftop:
 */
 
 	defcode "EMIT",4,,EMIT
-	pop %eax
-	call _EMIT
+	POPDATASTACK a2
+	call0 _EMIT
 	NEXT
 _EMIT:
-	mov $1,%ebx		// 1st param: stdout
+	// a2 is already containing the value to pass to C
 
-	// write needs the address of the byte to write
-	mov %al,emit_scratch
-	mov $emit_scratch,%ecx	// 2nd param: address
-
-	mov $1,%edx		// 3rd param: nbytes = 1
-
-	mov $__NR_write,%eax	// write syscall
-	int $0x80
+	SAFE_CALL putChar		// call C putChar()
+	movi a10, 0			// Set
+	blt a2, a10, EXIT_TO_C		// If an error is returned, abort and exit Forth
 	ret
-
-	.data			// NB: easier to fit in the .data section
-emit_scratch:
-	.space 1		// scratch used by EMIT
 
 /*
 	Back to input, WORD is a FORTH word which reads the next full word of input.
@@ -1512,46 +1506,50 @@ emit_scratch:
 */
 
 	defcode "WORD",4,,WORD
-	call _WORD
-	push %edi		// push base address
-	push %ecx		// push length
+	call0 _WORD
+	PUSHDATASTACK a2		// push base address
+	PUSHDATASTACK a3		// push length
 	NEXT
 
 _WORD:
 	/* Search for first non-blank character.  Also skip \ comments. */
-1:
-	call _KEY		// get next key, returned in %eax
-	cmpb $'\\',%al		// start of a comment?
-	je 3f			// if so, skip the comment
-	cmpb $' ',%al
-	jbe 1b			// if so, keep looking
+L16:
+	SAFE_CALL _KEY			// get next key, returned in %eax
+	movi a8, '\\'			// start of a comment?
+	beq a2, a8, L18			// if so, skip the comment
+	movi a8, ' '+1			// end of word?
+	blt a2, a8, L16			// if so, keep looking
 
 	/* Search for the end of the word, storing chars as we go. */
-	mov $word_buffer,%edi	// pointer to return buffer
-2:
-	stosb			// add character to return buffer
-	call _KEY		// get next key, returned in %al
-	cmpb $' ',%al		// is blank?
-	ja 2b			// if not, keep looping
+	ENV a8, system_t_word_buffer			// pointer to return buffer
+	PUT_ENV a8, system_t_word_buffer_ptr		// set up the pointer
+	ENV a9, system_t_word_buffer_size		// ensure no overrun of buffer
+	PUT_ENV a9, system_t_word_buffer_counter	// set up the pointer
+L17:
+	s32i a2, a8, 0					// add character to return buffer
+	addi a8, a8, 1
+	PUT_ENV a8, system_t_word_buffer_ptr
+	addi a9, a9, -1
+	PUT_ENV a9, system_t_word_buffer_counter
+	SAFE_CALL _KEY					// get next key, returned in %al
+	ENV a8, system_t_word_buffer_ptr
+	ENV a9, system_t_word_buffer_counter
+	beqz a9, L19					// Ran out of word buffer space, abort and return result.
+	movi a10, ' '+1					// is whitespace?
+	bge a2, a10, L17				// if not, keep looping
 
-	/* Return the word (well, the static buffer) and length. */
-	sub $word_buffer,%edi
-	mov %edi,%ecx		// return length of the word
-	mov $word_buffer,%edi	// return address of the word
+L19:	/* Return the word pointer in a2 and length in a3. */
+	ENV a2, system_t_word_buffer			// Word base address
+	ENV a3, system_t_word_buffer_ptr
+	sub a3, a2, a3					// Subtract the pointers to get the length.
 	ret
 
 	/* Code to skip \ comments to end of the current line. */
-3:
-	call _KEY
-	cmpb $'\n',%al		// end of line yet?
-	jne 3b
-	jmp 1b
-
-	.data			// NB: easier to fit in the .data section
-	// A static buffer where WORD returns.  Subsequent calls
-	// overwrite this buffer.  Maximum word length is 32 chars.
-word_buffer:
-	.space 32
+L18:
+	SAFE_CALL _KEY
+	movi a8, '\n'					// end of line yet?
+	bne a2, a8, L18
+	j L16
 
 /*
 	As well as reading in words we'll need to read in numbers and for that we are using a function
@@ -1570,65 +1568,71 @@ word_buffer:
 	partial value if there was an error.
 */
 	defcode "NUMBER",6,,NUMBER
-	pop %ecx		// length of string
-	pop %edi		// start address of string
-	call _NUMBER
-	push %eax		// parsed number
-	push %ecx		// number of unparsed characters (0 = no error)
+	POPDATASTACK a3			// length of string
+	POPDATASTACK a2			// start address of string
+	call0 _NUMBER
+	PUSHDATASTACK a2		// parsed number
+	PUSHDATASTACK a3		// number of unparsed characters (0 = no error)
 	NEXT
 
 _NUMBER:
-	xor %eax,%eax
-	xor %ebx,%ebx
+	xor a8, a8, a8
+	xor a9, a9, a9
 
-	test %ecx,%ecx		// trying to parse a zero-length string is an error, but will return 0.
-	jz 5f
+	beqz a3, L25		// trying to parse a zero-length string is an error, but will return 0.
 
-	movl var_BASE,%edx	// get BASE (in %dl)
+	READ_VAR a11, BASE	// get BASE into a11
 
 	// Check if first character is '-'.
-	movb (%edi),%bl		// %bl = first character in string
-	inc %edi
-	push %eax		// push 0 on stack
-	cmpb $'-',%bl		// negative number?
-	jnz 2f
-	pop %eax
-	push %ebx		// push <> 0 on stack, indicating negative
-	dec %ecx
-	jnz 1f
-	pop %ebx		// error: string is only '-'.
-	movl $1,%ecx
+	l8ui a10, a2, 0		// a10 = first character in string
+	addi a2, a2, 1		// inc char pointer
+	PUSHDATASTACK a8	// push 0 on stack
+	movi a7, '-'		// negative number?
+	bne a10, a7, L21
+	POPDATASTACK a8
+	PUSHDATASTACK a7	// push <> 0 on stack, indicating negative
+	addi a3, a3, -1		// decrement character counter
+	bnez a3, L20
+
+	POPDATASTACK a8		// error: string is only '-'., clean up stack
+	movi a3, 1		// return an error
+	movi a2, 0		// return value 0
 	ret
 
 	// Loop reading digits.
-1:	imull %edx,%eax		// %eax *= BASE
-	movb (%edi),%bl		// %bl = next character in string
-	inc %edi
+L20:	mull a8, a8, a11	// %eax *= BASE
+	l8ui a10, a2, 0		// a10 = next character in string
+	addi a2, a2, 1		// inc char pointer
 
 	// Convert 0-9, A-Z to a number 0-35.
-2:	subb $'0',%bl		// < '0'?
-	jb 4f
-	cmp $10,%bl		// <= '9'?
-	jb 3f
-	subb $17,%bl		// < 'A'? (17 is 'A'-'0')
-	jb 4f
-	addb $10,%bl
+L21:
+	movi a7, '0'
+	sub a10, a10, a7	// < '0'?
+	bltz a10, L23
+	movi a7, 10
+	blt a10, a7, L22	// <= '9'?
+	addi a10, a10, -17	// < 'A'? (17 is 'A'-'0')
+	bltz a10, L23
+	addi a10, a10, 10	// A=10, B=11, C=12....
 
-3:	cmp %dl,%bl		// >= BASE?
-	jge 4f
+L22:	bge a10, a11, L23	// >= BASE?
 
 	// OK, so add it to %eax and loop.
-	add %ebx,%eax
-	dec %ecx
-	jnz 1b
+	add a8, a8, a10
+	addi a3, a3, -1		// decrement character counter
+	bnez a3, L20
 
 	// Negate the result if first character was '-' (saved on the stack).
-4:	pop %ebx
-	test %ebx,%ebx
-	jz 5f
-	neg %eax
+L23:	POPDATASTACK a10
+	beqz a10, L24
+	neg a8, a8
 
-5:	ret
+L24:	mov a2, a8
+	ret
+
+L25:	movi a2, 0
+	movi a3, 0
+	ret
 
 /*
 	DICTIONARY LOOK UPS ----------------------------------------------------------------------
@@ -1658,49 +1662,47 @@ _NUMBER:
 */
 
 	defcode "(FIND)",6,,PAREN_FIND
-	pop %ecx		// %ecx = length
-	pop %edi		// %edi = address
-	call _FIND
-	push %eax		// %eax = address of dictionary entry (or NULL)
+	POPDATASTACK a3				// a3 = length
+	POPDATASTACK a2				// a2 = address
+	call0 _FIND
+	PUSHDATASTACK a2			// a2 = address of dictionary entry (or NULL)
 	NEXT
 
 _FIND:
-	push %esi		// Save %esi so we can use it in string comparison.
-
 	// Now we start searching backwards through the dictionary for this word.
-	mov var_LATEST,%edx	// LATEST points to name header of the latest word in the dictionary
-1:	test %edx,%edx		// NULL pointer?  (end of the linked list)
-	je 4f
+	READ_VAR a11, LATEST			// LATEST points to name header of the latest word in the dictionary
+L26:	beqz a11, L28				// NULL pointer?  (end of the linked list)
 
 	// Compare the length expected and the length of the word.
 	// Note that if the F_HIDDEN flag is set on the word, then by a bit of trickery
 	// this won't pick the word (the length will appear to be wrong).
-	xor %eax,%eax
-	movb 4(%edx),%al	// %al = flags+length field
-	andb $(F_HIDDEN|F_LENMASK),%al // %al = name length
-	cmpb %cl,%al		// Length is the same?
-	jne 2f
+	l8ui a8, a11, 4				// a8 = flags+length field
+	movi a6, F_HIDDEN | F_LENMASK		// trickery to use F_HIDDEN included in length.
+	and a8, a8, a6				// a8 = name length
+	bne a8, a3, L27				// Length (i.e. hidden must also be false) is the same?
 
 	// Compare the strings in detail.
-	push %ecx		// Save the length
-	push %edi		// Save the address (repe cmpsb will move this pointer)
-	lea 5(%edx),%esi	// Dictionary string we are checking against.
-	repe cmpsb		// Compare the strings.
-	pop %edi
-	pop %ecx
-	jne 2f			// Not the same.
+	mov a6, a2				// a6 = pointer to word searched
+	mov a7, a3				// a7 = characters to compare
+	mov a10, a11				// pointer to current record
+L29:
+	l8ui a8, a10, 5				// read char in current record
+	l8ui a9, a6, 0				// read char we are looking for
+	addi a10, a10, 1			// inc pointer in current record
+	addi a6, a6, 1				// inc pointer in Word
+	bne a8, a9, L27				// Not the same.
+	addi a7, a7, -1				// dec char counter
+	bnez a7, L29				// loop all characters
 
 	// The strings are the same - return the header pointer in %eax
-	pop %esi
-	mov %edx,%eax
+	mov a2,a11
 	ret
 
-2:	mov (%edx),%edx		// Move back through the link field to the previous word
-	jmp 1b			// .. and loop.
+L27:	l32i a11, a11, 0			// Move back through the link field to the previous word
+	j L26					// .. and loop.
 
-4:	// Not found.
-	pop %esi
-	xor %eax,%eax		// Return zero to indicate not found.
+L28:	// Not found.
+	xor a2, a2, a2				// Return zero to indicate not found.
 	ret
 
 /*
@@ -1735,19 +1737,18 @@ _FIND:
 */
 
 	defcode ">CFA",4,,TCFA
-	pop %edi
-	call _TCFA
-	push %edi
+	POPDATASTACK a2
+	call0 _TCFA
+	PUSHDATASTACK a2
 	NEXT
 _TCFA:
-	xor %eax,%eax
-	add $4,%edi		// Skip link pointer.
-	movb (%edi),%al		// Load flags+len into %al.
-	inc %edi		// Skip flags+len byte.
-	andb $F_LENMASK,%al	// Just the length, not the flags.
-	add %eax,%edi		// Skip the name.
-	addl $3,%edi		// The codeword is 4-byte aligned.
-	andl $~3,%edi
+	l8ui a8, a2, 5		// Read length+flags
+	movi a9, F_LENMASK	// trickery to use F_HIDDEN included in length.
+	and a8, a8, a9		// mask length
+	add a9, a2, a8		// move beyond the word
+	addi a9, a9, 3		// pad 3 bytes
+	movi a8, ~3		// mask last two bits for 4-byte alignment
+	and a2, a9, a8		// a2 pointing to 'codeword'
 	ret
 
 /*
@@ -2384,72 +2385,81 @@ interpret_is_lit:
 	ANS Forth Core Words  ----------------------------------------------------------------------
 	Some lower level ANS Forth CORE words are not presented in the orignal jonesforth. They are
 	included here without explaination.
+
+	TODO (niclas); The following section was lacking enough documentation and the porting may be very faulty.
 */
 
 /* Macros to deal with the return stack. */
 	.macro PUSH2RSP reg1,reg2
-	lea -8(%ebp),%ebp	// push reg1 and reg2 on to return stack
-	movl \reg1,4(%ebp)
-	movl \reg2,(%ebp)
+	addi a13, a13, -8	// push reg on to return stack
+	s32i \reg1, a13, 4
+	s32i \reg2, a13, 0
 	.endm
 
 	.macro POP2RSP reg1, reg2
-	mov (%ebp),\reg2	// pop top of return stack to reg1 and reg2
-	mov 4(%ebp), \reg1
-	lea 8(%ebp),%ebp
+	l32i \reg2, a13, 0	// pop top of return stack to reg
+	l32i \reg1, a13, 4	// pop top of return stack to reg
+	addi a13, a13, 8	// restore stack pointer
 	.endm
 
 	defcode "2*",2,,TWOMUL
-	shll $1, (%esp)
+	READTOSX a8
+	slli a8, a8, 1		// shift left logical 1 bit
+	WRITETOSX a8
 	NEXT
 
 	defcode "2/",2,,TWODIV
-	sarl $1, (%esp)
+	READTOSX a8
+	srai a8, a8, 1		// shift right arithmeic 1 bit
+	WRITETOSX a8
 	NEXT
 
 	defcode "(DO)", 4,,PAREN_DO
-	pop %eax		// pop parameter stack into %eax and %edx
-	pop %edx
-	PUSH2RSP %edx, %eax	// push it on to the return stack
+	POPDATASTACK a8		// pop parameter stack into %eax and %edx
+	POPDATASTACK a9
+	PUSH2RSP a9, a8		// push it on to the return stack
 	NEXT
 
 	defcode "(LOOP)", 6,,PAREN_LOOP
-	POP2RSP %edx, %eax
-	inc %eax
-	cmp %edx, %eax
-	je 1f
-	PUSH2RSP %edx, %eax
-	add (%esi),%esi		// add the offset to the instruction pointer
+	POP2RSP a9, a8
+	addi a8, a8, 1
+	beq a9, a8, 1f
+	PUSH2RSP a9, a8
+	l32i a8, a14, 0		// load offset from instruction pointer location
+	add a14, a14, a8	// add the offset to the instruction pointer
 	NEXT
 1:
-	lodsl
+	addi a14, a14, 4	// Advance instruction pointer
 	NEXT
 
 	defcode "(+LOOP)", 7,,PAREN_PLUS_LOOP
-	POP2RSP %edx, %eax	// index in %eax, limit in %edx
-	sub %edx, %eax		// index-limit in %eax
-	pop %ebx		// n in %ebx
-	add %eax, %ebx		// index-limit+n in %ebx
-	xor %ebx, %eax		// (index-limit) and (index-limit+n) have different sign?
-	js 1f
-	add %edx, %ebx		// index+n in %ebx
-	PUSH2RSP %edx, %ebx
-	add (%esi),%esi		// add the offset to the instruction pointer
+	POP2RSP a11, a8		// index in a8, limit in a11
+	sub a8, a8, a11		// index-limit in a8
+	POPSTACK a9		// n in a9
+	add a9, a8, a9		// index-limit+n in a9
+	xor a9, a9, a8		// (index-limit) and (index-limit+n) have different sign?
+	bltz a9, 1f
+	add a11, a9		// index+n in a9
+	PUSH2RSP a11, a9
+	l32i a8, a14, 0		// read jump offset
+	add a14, a14, a8	// add the offset to the instruction pointer
 	NEXT
 1:
-	lodsl
+	addi a14, a14, 4	// Advance instruction pointer
 	NEXT
 
 	defcode "UNLOOP", 6,,UNLOOP
-	lea 8(%ebp),%ebp
+	l32i a13, a13, 8	// Read top+8 of Return Stack
 	NEXT
 
 	defcode "I", 1,,I
-	push (%ebp)
+	l32i a8, a13, 0		// Read top of Return Stack
+	PUSHDATASTACK a8	// Push to Data Stack
 	NEXT
 
 	defcode "J", 1,,J
-	push 8(%ebp)
+	l32i a8, a13, 8		// Read top+8 of Return Stack
+	PUSHDATASTACK a8	// Push to Data Stack
 	NEXT
 
 /*
@@ -2465,23 +2475,16 @@ interpret_is_lit:
 	for a list of system call numbers).  As their name suggests these forms take between 0 and 3
 	syscall parameters, plus the system call number.
 
-	In this FORTH, SYSCALL0 must be the last word in the built-in (assembler) dictionary because we
+	In this FORTH, EXECUTE must be the last word in the built-in (assembler) dictionary because we
 	initialise the LATEST variable to point to it.  This means that if you want to extend the assembler
-	part, you must put new words before SYSCALL0, or else change how LATEST is initialised.
+	part, you must put new words before EXECUTE, or else change how LATEST is initialised.
 */
 
 	defcode "CHAR",4,,CHAR
-	call _WORD		// Returns %ecx = length, %edi = pointer to word.
-	xor %eax,%eax
-	movb (%edi),%al		// Get the first character of the word.
-	push %eax		// Push it onto the stack.
+	call0 _WORD		// Returns a3 = length, a2 = pointer to word.
+	l8ui a8, a2, 0		// Get the first character of the word.
+	PUSHSTACK a8		// Push it onto the stack.
 	NEXT
-
-	defcode "EXECUTE",7,,EXECUTE
-	POPDATASTACK a8		// Get xt into a8
-	l32i a8, a8, 0		// Load the address from memory
-	jx a8			// Jump to that address
-				// After xt runs its NEXT will continue executing the current word.
 
 //	defcode "SYSCALL3",8,,SYSCALL3
 //	pop %eax		// System call number (see <asm/unistd.h>)
@@ -2513,6 +2516,13 @@ interpret_is_lit:
 //	push %eax		// Result (negative for -errno)
 //	NEXT
 
+	defcode "EXECUTE",7,,EXECUTE
+	POPDATASTACK a8		// Get xt into a8
+	l32i a8, a8, 0		// Load the address from memory
+	jx a8			// Jump to that address
+				// After xt runs its NEXT will continue executing the current word.
+
+
 /*
 	DATA SEGMENT ----------------------------------------------------------------------
 
@@ -2537,80 +2547,31 @@ interpret_is_lit:
 
 	You don't need to worry about this code.
 */
-	.macro VAR_ADDR reg, address
-	.literal .ADDR_\address, \address
-	l32r \reg, .ADDR_\address
-	.endm
 
-	.macro READ_VAR reg, address
-	.literal .ADDR_\address, \address
-	l32r \reg, .ADDR_\address
-	l32i \reg, \reg, 0
-	.endm
-
-	.macro WRITE_VAR reg, free_reg, address
-	.literal .ADDR_\address, \address
-	l32r \free_reg, .ADDR_\address
-	l32i \reg, \free_reg, 0
-	.endm
-
+/* The internal state of the Forth environment is kept in these variables. */
 	.local
-	.comm	c_stack_address,4,4		// The Stack Pointer at Entry to Assembler
-	.comm	c_return_address,4,4		// The Return address to the C bootstrapper
-	.comm	data_segment_pointer,4,4	// Points to the first byte in the Data Segment
-	.comm	data_segment_size,4,4		// The total size of the Data Segment
-	.comm	data_segment_top,4,4		// Points to the first byte beyond the Data Segment
-	.comm	return_stack_bottom,4,4		// Points to the first byte beyond the Return Stack's starting point
-	.comm	return_stack_size,4,4		// Points to the first byte beyond the Return Stack's starting point
-	.comm	data_stack_bottom,4,4		// Points to the first byte beyond the Data Stack's starting point
-	.comm	data_stack_size,4,4		// Points to the first byte beyond the Data Stack's starting point
-	.comm	data_stack_top,4,4		// Points to the last byte inside the Data Stack (lower memory)
-	.comm	system_resources,4,4		// Points to the Structure of System Resources
+	DECL_VAR c_stack_address,4,4		// The Stack Pointer at Entry to Assembler
+	DECL_VAR c_return_address,4,4		// The Return address to the C bootstrapper
 
 	.text
 initialize:
 	// a0 Return address
-	// a2 Data Segment Pointer
-	// a3 Data Segment Size in bytes
-	// a4 Data stack size in bytes
-	// a5 Return stack size in bytes
+	// a2 system_t pointer
 
-	VAR_ADDR a8, c_stack_address
-	s32i a1, a8, 0				// Save the initial stack pointer in FORTH variable S0.
+	mov a12, a2				// Set the System Environment pointer
+	WRITE_VAR a1, a8, c_stack_address
+	WRITE_VAR a0, a8, c_return_address
 
-	VAR_ADDR a8, c_return_address
-	s32i a0, a8, 0				// Save the C return address
+	ENV a13, system_t_return_stack
+	ENV a15, system_t_data_stack
 
+	ENV a11, system_t_data_segment		// Get position of data segment
+	WRITE_VAR a11, a8, ADDR_DP		// Save Forth variable named DP
 
-	VAR_ADDR a8, data_segment_pointer
-	s32i a2, a8, 0				// Save the Data Segment start address
-
-	WRITE_VAR a3, a8, data_segment_size	// Save the size of the Data Segment
-
-	VAR_ADDR a8, systemResources
-	s32i a4, a8, 0
-
-	addi a13, a2, a3 		// Return Stack Pointer = Pointer + Size
-					// NOTE: The RSP points outside the data segment, as the pointer is defined
-					//	 to point at the TopOfStack and initially the Stack is empty. Upon
-					//	 PUSHRSP the pointer is first moved, then filled with data.
-
-	WRITE_VAR a13, a8, data_segment_top	// Save Data Segment bottom
-
-	WRITE_VAR a5, a8, return_stack_size	// Save the size of Return Stack
-	WRITE_VAR a13, a8, return_stack_bottom	// Save bottom of Return Stack
-
-	sub a15, a13, a4			// Set Data Stack Pointer (DSP) return stack size bytes lower in memory.
-						// NOTE: DSP points at the last available position in the RSP, as the
-						//	 pointer is defined to point at the TopOfStack and initially the
-						//	 Stack is empty. Upon PUSHDATASTACK the pointer is first moved,
-						//	 then filled with data.
-	WRITE_VAR a15, a8, data_stack_bottom
-	WRITE_VAR a15, a4, data_stack_size
-
-	sub a9, a15, a4				// Allocate the space for the Data Stack
-	WRITE_VAR a9, a8, data_stack_bottom	// Save the last position available in data stack.
-
+	ENV a8, system_t_input_buffer		// Get position of Input Buffer
+	ENV a9, system_t_input_buffer_size	// Get size of Input Buffer
+	WRITE_VAR a8, currkey			// Save currkey position
+	WRITE_VAR a8, bufftop			// Save last value in buffer
 	ret
 
 /*
