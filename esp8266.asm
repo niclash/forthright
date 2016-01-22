@@ -1263,7 +1263,7 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	.data
 	.align 4
 var_\name :
-	.literal ADDR_\name, var_\name
+	.literal .ADDR_\name, var_\name
 	.int \initial
 	.endm
 
@@ -1930,28 +1930,30 @@ _TCFA:
 	defcode "HEADER,",7,,HEADER_COMMA
 
 	// Get the name length and address.
-	pop %ecx		// %ecx = length
-	pop %ebx		// %ebx = address of name
+	POPDATASTACK a9			// a9 = length
+	POPDATASTACK a10		// a10 = address of name
 
 	// Link pointer.
-	movl var_DP,%edi	// %edi is the address of the header
-	movl var_LATEST,%eax	// Get link pointer
-	stosl			// and store it in the header.
+	READ_VAR a11, DP	// a11 is the address of the header, i.e. the top of memory available.
+	READ_VAR a8, LATEST	// Get link pointer
+	s32i a8, a11, 0		// and store it in the header.
 
 	// Length byte and the word itself.
-	mov %cl,%al		// Get the length.
-	stosb			// Store the length/flags byte.
-	push %esi
-	mov %ebx,%esi		// %esi = word
-	rep movsb		// Copy the word
-	pop %esi
-	lea 3(%edi),%edi		// Align to next 4 byte boundary.
-	andl $~3,%edi
-
-	// Update LATEST and DP.
-	movl var_DP,%eax
-	movl %eax,var_LATEST
-	movl %edi,var_DP
+	s8i a9, a11, 4		// Store the length/flags byte.
+L30:
+	l8ui a7, a10, 0		// read name character
+	s8i a7, a11, 5		// store in header
+	addi a10, a10, 1	// inc name source
+	addi a11, a11, 1	// inc name dest
+	addi a9, a9, -1		// dec character counter
+	bnez a9, L30		// loop all characters
+	addi a11, a11, 3	// add padding bytes
+	movi a10, ~3		// mask away last 2 bits
+	and a11, a11, a10	// last 2 bits removed
+	// a11 now points at 'codeword'
+	READ_VAR a8, DP		// previous datasegment pointer is where the new header was added.
+	WRITE_VAR a8, a9, LATEST  // update the LATEST location.
+	WRITE_VAR a11, a9, DP	// update new datasegment pointer
 	NEXT
 
 /*
@@ -1978,13 +1980,14 @@ _TCFA:
 */
 
 	defcode ",",1,,COMMA
-	pop %eax		// Code pointer to store.
-	call _COMMA
+	POPDATASTACK a2		// Code pointer to store.
+	call0 _COMMA
 	NEXT
 _COMMA:
-	movl var_DP,%edi	// DP
-	stosl			// Store it.
-	movl %edi,var_DP	// Update DP (incremented)
+	READ_VAR a8, DP		// a8 <- DP
+	S32i a2, a8, 0		// Store it.
+	addi a8, a8, 4		// increment DP
+	WRITE_VAR a8, a9, DP	// update DP
 	ret
 
 /*
@@ -2007,12 +2010,13 @@ _COMMA:
 */
 
 	defcode "[",1,F_IMMED,LBRAC
-	xor %eax,%eax
-	movl %eax,var_STATE	// Set STATE to 0.
+	movi a8, 0
+	WRITE_VAR a8, a9, STATE	// Set STATE to 0.
 	NEXT
 
 	defcode "]",1,,RBRAC
-	movl $1,var_STATE	// Set STATE to 1.
+	movi a8, 1
+	WRITE_VAR a8, a9, STATE	// Set STATE to 1.
 	NEXT
 
 /*
@@ -2067,9 +2071,11 @@ _COMMA:
 */
 
 	defcode "IMMEDIATE",9,F_IMMED,IMMEDIATE
-	movl var_LATEST,%edi	// LATEST word.
-	addl $4,%edi		// Point to name/flags byte.
-	xorb $F_IMMED,(%edi)	// Toggle the IMMED bit.
+	READ_VAR a8, LATEST		// LATEST word.
+	addi a8, a8, 4			// Point to name/flags byte.
+	movi a9, F_IMMED
+	xor a8, a8, a9			// Toggle the IMMED bit.
+	WRITE_VAR a8, a9, LATEST	// Update the F_IMMED flag in the LATEST word
 	NEXT
 
 /*
@@ -2095,16 +2101,18 @@ _COMMA:
 */
 
 	defcode "HIDDEN",6,,HIDDEN
-	pop %edi		// Dictionary entry.
-	addl $4,%edi		// Point to name/flags byte.
-	xorb $F_HIDDEN,(%edi)	// Toggle the HIDDEN bit.
+	READ_VAR a8, LATEST		// LATEST word.
+	addi a8, a8, 4			// Point to name/flags byte.
+	movi a9, F_IMMED
+	xor a8, a8, a9			// Toggle the IMMED bit.
+	WRITE_VAR a8, a9, LATEST	// Update the F_IMMED flag in the LATEST word
 	NEXT
 
 	defword "HIDE",4,,HIDE
-	.int WORD		// Get the word (after HIDE).
-	.int PAREN_FIND		// Look up in the dictionary.
-	.int HIDDEN		// Set F_HIDDEN flag.
-	.int EXIT		// Return.
+	.int WORD			// Get the word (after HIDE).
+	.int PAREN_FIND			// Look up in the dictionary.
+	.int HIDDEN			// Set F_HIDDEN flag.
+	.int EXIT			// Return.
 
 /*
 	['] (BRACKET_TICK) is a standard FORTH word which returns the codeword pointer of the next word.
@@ -2140,8 +2148,9 @@ _COMMA:
 	which works in immediate mode too.
 */
 	defcode "[']",3,,BRACKET_TICK
-	lodsl			// Get the address of the next word and skip it.
-	pushl %eax		// Push it on the stack.
+	l32i a8, a14, 0			// get the address of the next word
+	addi a14, a14, 4		// and skip it.
+	PUSHDATASTACK a8		// Push it on the stack.
 	NEXT
 
 /*
@@ -2186,14 +2195,14 @@ _COMMA:
 */
 
 	defcode "BRANCH",6,,BRANCH
-	add (%esi),%esi		// add the offset to the instruction pointer
+	l32i a8, a14, 0			// read offset
+	add a14, a14, a8		// add the offset to the instruction pointer
 	NEXT
 
 	defcode "0BRANCH",7,,ZBRANCH
-	pop %eax
-	test %eax,%eax		// top of stack is zero?
-	jz code_BRANCH		// if so, jump back to the branch function above
-	lodsl			// otherwise we need to skip the offset
+	POPDATASTACK a8			// get condition from top of stack
+	beqz a8, code_BRANCH		// top of stack is zero? if so, jump back to the branch function above
+	addi a14, a14, 4		// otherwise we need to skip the offset
 	NEXT
 
 /*
