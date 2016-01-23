@@ -509,6 +509,18 @@
 	l32i \reg, a13, 0	// pop top of return stack to reg
 	.endm
 
+	.macro PUSH2RSP reg1,reg2
+	addi a13, a13, -8	// push reg on to return stack
+	s32i \reg1, a13, 4
+	s32i \reg2, a13, 0
+	.endm
+
+	.macro POP2RSP reg1, reg2
+	l32i \reg2, a13, 0	// pop top of return stack to reg
+	l32i \reg1, a13, 4	// pop top of return stack to reg
+	addi a13, a13, 8	// restore stack pointer
+	.endm
+
 /* Macros to deal with the data stack. */
 	.macro PUSHDATASTACK reg
 	addi a15, a15, -4	// push reg on to data stack
@@ -641,7 +653,7 @@ stack points ->	| addr of DOUBLE   |	   + 4 =   +------------------+
 /* Assembler entry point. */
 	.text
 	.global forthright_start
-
+	.align 4
 /* 	Entry point from C bootstrap.
 
 	The signature of the entry point seen from C looks like;
@@ -718,6 +730,7 @@ DOUBLE: .int DOCOL		// codeword
 	so that I can just write:
 
 	defword "DOUBLE",6,,DOUBLE
+	.align 4
 	.int DUP,PLUS,EXIT
 
 	and I'll get exactly the same effect.
@@ -2409,11 +2422,13 @@ DODOES:
 	NEXT
 
 	.section .rodata
+	.align 4
 errmsg:
 	.ascii "PARSE ERROR: "
 	.set errmsg_size, .-errmsg
-
+	.align 4
 errmsgnl: .ascii "\n"
+	.align 4
 errmsgcr: .ascii "\n"
 
 
@@ -2425,18 +2440,7 @@ errmsgcr: .ascii "\n"
 	TODO (niclas); The following section was lacking enough documentation and the porting may be very faulty.
 */
 
-/* Macros to deal with the return stack. */
-	.macro PUSH2RSP reg1,reg2
-	addi a13, a13, -8	// push reg on to return stack
-	s32i \reg1, a13, 4
-	s32i \reg2, a13, 0
-	.endm
-
-	.macro POP2RSP reg1, reg2
-	l32i \reg2, a13, 0	// pop top of return stack to reg
-	l32i \reg1, a13, 4	// pop top of return stack to reg
-	addi a13, a13, 8	// restore stack pointer
-	.endm
+/* Words to deal with the return stack. */
 
 	defcode "2*",2,,TWOMUL
 	READTOSX a8
@@ -2601,7 +2605,7 @@ initialize:
 	ENV a15, system_t_data_stack
 
 	ENV a11, system_t_data_segment		// Get position of data segment
-	WRITE_VAR a11, a8, ADDR_DP		// Save Forth variable named DP
+	WRITE_VAR a11, a8, DP			// Save Forth variable named DP
 
 	ENV a8, system_t_input_buffer		// Get position of Input Buffer
 	ENV a9, system_t_input_buffer_size	// Get size of Input Buffer

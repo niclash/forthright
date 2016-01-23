@@ -77,18 +77,18 @@ forthright: forthright.o esp8266.o
 	-Wl,--start-group \
 	esp8266.o \
 	forthright.o \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WiFi/ESP8266WiFi.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WiFi/ESP8266WiFiMulti.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WiFi/WiFiClient.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WiFi/WiFiClientSecure.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WiFi/WiFiServer.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WiFi/WiFiUdp.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266mDNS/ESP8266mDNS.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ArduinoOTA/ArduinoOTA.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WebServer/ESP8266WebServer.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/ESP8266WebServer/Parsing.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/OneWire/OneWire.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/libraries/Arduino-Temperature-Control-Library-3.7.5/DallasTemperature.cpp.o" \
+	"belt/ESP8266WiFi/ESP8266WiFi.cpp.o" \
+	"belt/ESP8266WiFi/ESP8266WiFiMulti.cpp.o" \
+	"belt/ESP8266WiFi/WiFiClient.cpp.o" \
+	"belt/ESP8266WiFi/WiFiClientSecure.cpp.o" \
+	"belt/ESP8266WiFi/WiFiServer.cpp.o" \
+	"belt/ESP8266WiFi/WiFiUdp.cpp.o" \
+	"belt/ESP8266mDNS/ESP8266mDNS.cpp.o" \
+	"belt/ArduinoOTA/ArduinoOTA.cpp.o" \
+	"belt/ESP8266WebServer/ESP8266WebServer.cpp.o" \
+	"belt/ESP8266WebServer/Parsing.cpp.o" \
+	"belt/OneWire/OneWire.cpp.o" \
+	"belt/Arduino-Temperature-Control-Library-3.7.5/DallasTemperature.cpp.o" \
 	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/arduino.ar" \
 	-lm \
 	-lgcc \
@@ -103,8 +103,7 @@ forthright: forthright.o esp8266.o
 	-lwps \
 	-lcrypto \
 	-laxtls \
-	-Wl,--end-group  \
-	"-L/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp"
+	-Wl,--end-group
 
 
 clean:
