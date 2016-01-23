@@ -66,7 +66,20 @@ int putChar( char ch )
     return 1;
 }
 
-int readChars(char* buffer, int bufsize)
+int putChars( char* str, int length )
+{
+    for( int i=0; i < length; i++ )
+    {
+        int result = putChar( str[i] );
+        if( result < 0 )
+        {
+            return result;
+        }
+    }
+    return length;
+}
+
+int readChars( char* buffer, int bufsize )
 {
     putChar('o');
     char ch;

@@ -17,6 +17,10 @@
 	.comm \name, \space, \align
 	.endm
 
+	.macro CODE_ADDR reg, address
+	l32r \reg, .CODE_\address
+	.endm
+
 	.macro VAR_ADDR reg, address
 	l32r \reg, .ADDR_\address
 	.endm

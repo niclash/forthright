@@ -782,6 +782,7 @@ name_\label :
 	.byte \flags+\namelen	// flags + length byte
 	.ascii "\name"		// the name
 	.align 4		// padding to next 4 byte boundary
+	.literal .CODE_\label, \label
 	.globl \label
 \label :
 	.int code_\label	// codeword
@@ -1575,9 +1576,19 @@ L18:
 	PUSHDATASTACK a3		// number of unparsed characters (0 = no error)
 	NEXT
 
+/* Parses a string to a integer number
+
+   Inarguments
+      a2 : address of string
+      a3 : length of string
+
+   Return values
+      a2 : the parsed number
+      a3 : unparsed characters. Should be 0 for success.
+*/
 _NUMBER:
-	xor a8, a8, a8
-	xor a9, a9, a9
+	movi a8, 0
+	movi a9, 0
 
 	beqz a3, L25		// trying to parse a zero-length string is an error, but will return 0.
 
@@ -1694,7 +1705,7 @@ L29:
 	addi a7, a7, -1				// dec char counter
 	bnez a7, L29				// loop all characters
 
-	// The strings are the same - return the header pointer in %eax
+	// The strings are the same - return the header pointer in a2
 	mov a2,a11
 	ret
 
@@ -1741,6 +1752,13 @@ L28:	// Not found.
 	call0 _TCFA
 	PUSHDATASTACK a2
 	NEXT
+/* Gets the Codeword pointer of a Dictionary Pointer
+     Inarguments
+        a2 : pointer to Dictionary entry
+
+     Return values
+        a2 : pointer to Codeword
+*/
 _TCFA:
 	l8ui a8, a2, 5		// Read length+flags
 	movi a9, F_LENMASK	// trickery to use F_HIDDEN included in length.
@@ -1983,6 +2001,14 @@ L30:
 	POPDATASTACK a2		// Code pointer to store.
 	call0 _COMMA
 	NEXT
+
+/* This routine adds the integer in a2 to the dictionary (as pointed by DP) and advances DP to next location.
+	Inarguments
+	   a2 : Codepointer to be stored in Dictionary
+
+	Return value
+	   none
+*/
 _COMMA:
 	READ_VAR a8, DP		// a8 <- DP
 	S32i a2, a8, 0		// Store it.
@@ -2216,20 +2242,21 @@ _COMMA:
 */
 
 	defcode "LITSTRING",9,,LITSTRING
-	lodsl			// get the length of the string
-	push %esi		// push the address of the start of the string
-	push %eax		// push it on the stack
-	addl %eax,%esi		// skip past the string
- 	addl $3,%esi		// but round up to next 4 byte boundary
-	andl $~3,%esi
+	l32i a8, a14, 0         // get the length of the string
+	addi a14, a14, 4	// advance the instruction pointer
+	PUSHDATASTACK a14	// push the address of the start of the string
+	PUSHDATASTACK a8	// push length on the stack
+	add a14, a14, a8	// skip past the string
+ 	addi a14,a14, 3		// but round up to next 4 byte boundary
+ 	movi a8, ~3		// align 4-byte mask
+	and a14, a14, a8	// align instruction pointer
 	NEXT
 
 	defcode "TELL",4,,TELL
-	mov $1,%ebx		// 1st param: stdout
-	pop %edx		// 3rd param: length of string
-	pop %ecx		// 2nd param: address of string
-	mov $__NR_write,%eax	// write syscall
-	int $0x80
+	POPDATASTACK a3
+	POPDATASTACK a2
+	call0 putChars
+	// TODO (niclas); putChars() returns a negative number if there was an error. What to do?
 	NEXT
 
 /*
@@ -2263,14 +2290,14 @@ _COMMA:
 
 	.text
 	.align 4
-DODOES: 
-	cmpl $0,4(%eax)		// Is offset zero ?
-	jz 1f
-	lea -4(%ebp),%ebp
-	mov %esi,(%ebp)
-	mov 4(%eax),%esi	// Get pointer to behavior words
-1:	lea 8(%eax),%eax
-	push %eax		// Push the pointer to its data
+DODOES:
+	l32i a9, a8, 4		// get Behavior Word
+	beqz a9, 1f		// branch if offset is zero
+	PUSHRSP a14
+	l32i a14, a8, 4
+
+1:	addi a8, a8, 8
+	PUSHDATASTACK a8
 	NEXT
 
 	defconst "DODOES",6,,__DODOES,DODOES
@@ -2287,108 +2314,106 @@ DODOES:
 	INTERPRET is the FORTH interpreter ("toploop", "toplevel" or "REPL" might be a more accurate
 	description -- see: http://en.wikipedia.org/wiki/REPL).
 */
+	DECL_VAR interpret_is_lit, 4, 4		// Flag used to record if reading a literal
 
 	// QUIT must not return (ie. must not call EXIT).
 	defword "QUIT",4,,QUIT
-	.int RZ,RSPSTORE	// R0 RSP!, clear the return stack
-	.int INTERPRET		// interpret the next word
-	.int BRANCH,-8		// and loop (indefinitely)
+	.int RZ,RSPSTORE			// R0 RSP!, clear the return stack
+	.int INTERPRET				// interpret the next word
+	.int BRANCH,-8				// and loop (indefinitely)
 
 /*
 	This interpreter is pretty simple, but remember that in FORTH you can always override
 	it later with a more powerful one!
  */
 	defcode "INTERPRET",9,,INTERPRET
-	call _WORD		// Returns %ecx = length, %edi = pointer to word.
+	call0 _WORD				// Returns a3 = length, a2 = pointer to word.
 
 	// Is it in the dictionary?
-	xor %eax,%eax
-	movl %eax,interpret_is_lit // Not a literal number (not yet anyway ...)
-	call _FIND		// Returns %eax = pointer to header or 0 if not found.
-	test %eax,%eax		// Found?
-	jz 1f
+	movi a8, 0
+	WRITE_VAR a8, a9, interpret_is_lit	// Not a literal number (not yet anyway ...)
+
+	call0 _FIND				// Returns a2 = pointer to header or 0 if not found.
+	beqz a2, 1f				// Found?
 
 	// In the dictionary.  Is it an IMMEDIATE codeword?
-	mov %eax,%edi		// %edi = dictionary entry
-	movb 4(%edi),%al	// Get name+flags.
-	push %ax		// Just save it for now.
-	call _TCFA		// Convert dictionary entry (in %edi) to codeword pointer.
-	pop %ax
-	andb $F_IMMED,%al	// Is IMMED flag set?
-	mov %edi,%eax
-	jnz 4f			// If IMMED, jump straight to executing.
-
-	jmp 2f
+	l8ui a8, a2, 4				// Get name_length+flags.
+	PUSHDATASTACK a8			// Just save it for now.
+	call0 _TCFA				// Convert dictionary entry (in a2) to codeword pointer (to a2).
+	POPDATASTACK a8
+	movi a9, F_IMMED
+	and a9, a8, a9				// is IMMED flag set?
+	mov a8, a2				// save codeword pointer in a8
+	bnez a9, 4f				// If IMMED, jump straight to executing.
+	j 2f
 
 1:	// Not in the dictionary (not a word) so assume it's a literal number.
-	incl interpret_is_lit
-	call _NUMBER		// Returns the parsed number in %eax, %ecx > 0 if error
-	test %ecx,%ecx
-	jnz 6f
-	mov %eax,%ebx
-	mov $LIT,%eax		// The word is LIT
+	READ_VAR a8, interpret_is_lit
+	addi a8, a8, 1
+	WRITE_VAR a8, a7, interpret_is_lit	// increment interpret_is_lit
+
+	call0 _NUMBER				// Returns the parsed number in a2, a3 > 0 if error
+	bnez a3, 6f				// branch if there was an error
+	mov a10, a8				// store number in a10
+	CODE_ADDR a8, LIT			// The word is LIT
 
 2:	// Are we compiling or executing?
-	movl var_STATE,%edx
-	test %edx,%edx
-	jz 4f			// Jump if executing.
+	READ_VAR a11, STATE
+	beqz a11, 4f				// Jump if executing.
 
 	// Compiling - just append the word to the current dictionary definition.
-	call _COMMA
-	mov interpret_is_lit,%ecx // Was it a literal?
-	test %ecx,%ecx
-	jz 3f
-	mov %ebx,%eax		// Yes, so LIT is followed by a number.
-	call _COMMA
+	call0 _COMMA				// a2 must contain the integer to be stored, a posibility of
+	 					// 1: a dictionary word pointer returned by _WORD
+						// 2: an integer returned from _NUMBER,
+						// 3(?): pointer to code
+	READ_VAR a9, interpret_is_lit		// Was it a literal?
+	beqz a9, 3f
+	mov a8, a10				// Yes, so LIT is followed by a number.
+	call0 _COMMA
 3:	NEXT
 
 4:	// Executing - run it!
-	mov interpret_is_lit,%ecx // Literal?
-	test %ecx,%ecx		// Literal?
-	jnz 5f
+	READ_VAR a9, interpret_is_lit		// Was it a literal?
+	bnez a9, 5f
 
 	// Not a literal, execute it now.  This never returns, but the codeword will
 	// eventually call NEXT which will reenter the loop in QUIT.
-	jmp *(%eax)
+        l32i a8, a8, 0				// Read address to jump to
+	jx a8					// Jump to that address
 
 5:	// Executing a literal, which means push it on the stack.
-	push %ebx
+	PUSHDATASTACK a10			// a10 contains the saved integer v
 	NEXT
 
 6:	// Parse error (not a known word or a number in the current BASE).
 	// Print an error message followed by up to 40 characters of context.
-	mov $2,%ebx		// 1st param: stderr
-	mov $errmsg,%ecx	// 2nd param: error message
-	mov $errmsgend-errmsg,%edx // 3rd param: length of string
-	mov $__NR_write,%eax	// write syscall
-	int $0x80
+	l32r a2, errmsg
+	movi a3, errmsg_size
+	call0 putChars				// print the error
 
-	mov (currkey),%ecx	// the error occurred just before currkey position
-	mov %ecx,%edx
-	sub $buffer,%edx	// %edx = currkey - buffer (length in buffer before currkey)
-	cmp $40,%edx		// if > 40, then print only 40 characters
-	jle 7f
-	mov $40,%edx
-7:	sub %edx,%ecx		// %ecx = start of area to print, %edx = length
-	mov $__NR_write,%eax	// write syscall
-	int $0x80
+	READ_VAR a9, currkey			// the error occurred just before currkey position
+	ENV a8, system_t_input_buffer		// Get position of Input Buffer
+	sub a3, a9, a8				// a3 = currkey - buffer (length in buffer before currkey)
+	movi a10, 41
+	blt a3, a10, 7f				// if > 40, then print only 40 characters
+	movi a3, 40
+7:	sub a2, a9, a3				// a2 = start of area to print, a3 = length
+	call0 putChars				// print the characters
 
-	mov $errmsgnl,%ecx	// newline
-	mov $1,%edx
-	mov $__NR_write,%eax	// write syscall
-	int $0x80
-
+	l32r a2, errmsgcr
+	call0 putChar				// print CR
+	l32r a2, errmsgnl
+	call0 putChar				// print LF
 	NEXT
 
 	.section .rodata
-errmsg: .ascii "PARSE ERROR: "
-errmsgend:
-errmsgnl: .ascii "\n"
+errmsg:
+	.ascii "PARSE ERROR: "
+	.set errmsg_size, .-errmsg
 
-	.data			// NB: easier to fit in the .data section
-	.align 4
-interpret_is_lit:
-	.int 0			// Flag used to record if reading a literal
+errmsgnl: .ascii "\n"
+errmsgcr: .ascii "\n"
+
 
 /*
 	ANS Forth Core Words  ----------------------------------------------------------------------
@@ -2444,11 +2469,11 @@ interpret_is_lit:
 	defcode "(+LOOP)", 7,,PAREN_PLUS_LOOP
 	POP2RSP a11, a8		// index in a8, limit in a11
 	sub a8, a8, a11		// index-limit in a8
-	POPSTACK a9		// n in a9
+	POPDATASTACK a9		// n in a9
 	add a9, a8, a9		// index-limit+n in a9
 	xor a9, a9, a8		// (index-limit) and (index-limit+n) have different sign?
 	bltz a9, 1f
-	add a11, a9		// index+n in a9
+	add a9, a11, a9		// index+n in a9
 	PUSH2RSP a11, a9
 	l32i a8, a14, 0		// read jump offset
 	add a14, a14, a8	// add the offset to the instruction pointer
@@ -2492,7 +2517,7 @@ interpret_is_lit:
 	defcode "CHAR",4,,CHAR
 	call0 _WORD		// Returns a3 = length, a2 = pointer to word.
 	l8ui a8, a2, 0		// Get the first character of the word.
-	PUSHSTACK a8		// Push it onto the stack.
+	PUSHDATASTACK a8	// Push it onto the stack.
 	NEXT
 
 //	defcode "SYSCALL3",8,,SYSCALL3
@@ -2558,7 +2583,6 @@ interpret_is_lit:
 */
 
 /* The internal state of the Forth environment is kept in these variables. */
-	.local
 	DECL_VAR c_stack_address,4,4		// The Stack Pointer at Entry to Assembler
 	DECL_VAR c_return_address,4,4		// The Return address to the C bootstrapper
 
@@ -2579,8 +2603,8 @@ initialize:
 
 	ENV a8, system_t_input_buffer		// Get position of Input Buffer
 	ENV a9, system_t_input_buffer_size	// Get size of Input Buffer
-	WRITE_VAR a8, currkey			// Save currkey position
-	WRITE_VAR a8, bufftop			// Save last value in buffer
+	WRITE_VAR a8, a9, currkey		// Save currkey position
+	WRITE_VAR a8, a9, bufftop		// Save last value in buffer
 	ret
 
 /*
