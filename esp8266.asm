@@ -6,7 +6,6 @@
 */
 	.include "esp8266.ainc"
 
-	.set FORTHRIGHT_VERSION,48
 /*
 	INTRODUCTION ----------------------------------------------------------------------
 
@@ -641,7 +640,7 @@ stack points ->	| addr of DOUBLE   |	   + 4 =   +------------------+
 
 /* Assembler entry point. */
 	.text
-	.globl _start
+	.global forthright_start
 
 /* 	Entry point from C bootstrap.
 
@@ -656,7 +655,7 @@ stack points ->	| addr of DOUBLE   |	   + 4 =   +------------------+
 		a4	returnStackSize
 		a5	systemResources pointter
 */
-_start:
+forthright_start:
 	call0 initialize
 
 	.literal .COLDSTART, cold_start
@@ -782,7 +781,6 @@ name_\label :
 	.byte \flags+\namelen	// flags + length byte
 	.ascii "\name"		// the name
 	.align 4		// padding to next 4 byte boundary
-	.literal .CODE_\label, \label
 	.globl \label
 \label :
 	.int code_\label	// codeword
@@ -1258,7 +1256,7 @@ L14:	l8ui a11,a10,0		// fetch a byte
 
 	.macro defvar name, namelen, flags=0, label, initial=0
 	defcode \name,\namelen,\flags,\label
-	l32r a8, $var_\name
+	l32r a8, var_\name
 	PUSHDATASTACK a8
 	NEXT
 	.data
@@ -1302,18 +1300,14 @@ var_\name :
 	SYS_*		and the numeric codes of various Linux syscalls (from <asm/unistd.h>)
 */
 
-//#include <asm-i386/unistd.h>	// you might need this instead
-//#include <asm/unistd.h>
-
 	.macro defconst name, namelen, flags=0, label, value
 	defcode \name,\namelen,\flags,\label
-	movi a8, $\value
+	movi a8, \value
 	PUSHDATASTACK a8
 	NEXT
 	.endm
 
 	defconst "VERSION",7,,VERSION,FORTHRIGHT_VERSION
-	defconst "R0",2,,RZ,return_stack_top
 	defconst "DOCOL",5,,__DOCOL,DOCOL
 	defconst "F_IMMED",7,,__F_IMMED,F_IMMED
 	defconst "F_HIDDEN",8,,__F_HIDDEN,F_HIDDEN
@@ -1337,12 +1331,18 @@ var_\name :
 	defconst "O_APPEND",8,,__O_APPEND,02000
 	defconst "O_NONBLOCK",10,,__O_NONBLOCK,04000
 */
+
 /*
 	RETURN STACK ----------------------------------------------------------------------
 
 	These words allow you to access the return stack.  Recall that the register %ebp always points to
 	the top of the return stack.
 */
+	defcode "R0",2,,RZ
+	addi a8, a12, system_t_return_stack_size	// add offset to system_t pointer to get the location of top
+	 						// of the return stack
+	PUSHDATASTACK a8
+	NEXT
 
 	defcode ">R",2,,TOR
 	POPDATASTACK a8		// pop parameter stack into a8
@@ -2355,7 +2355,9 @@ DODOES:
 	call0 _NUMBER				// Returns the parsed number in a2, a3 > 0 if error
 	bnez a3, 6f				// branch if there was an error
 	mov a10, a8				// store number in a10
-	CODE_ADDR a8, LIT			// The word is LIT
+
+	.literal .ADDR_TO_LIT, LIT
+	l32r a8, .ADDR_TO_LIT			// The word is LIT, a8 points now points to the code for the literal??
 
 2:	// Are we compiling or executing?
 	READ_VAR a11, STATE
@@ -2374,7 +2376,7 @@ DODOES:
 
 4:	// Executing - run it!
 	READ_VAR a9, interpret_is_lit		// Was it a literal?
-	bnez a9, 5f
+	bnez a9, 5f				// branch if literal
 
 	// Not a literal, execute it now.  This never returns, but the codeword will
 	// eventually call NEXT which will reenter the loop in QUIT.

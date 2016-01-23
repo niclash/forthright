@@ -36,7 +36,7 @@ static char return_stack[RETURN_STACK_SIZE];
 static char input_buffer[INPUT_BUFFER_SIZE];
 static char data_segment[DATA_SEGMENT_SIZE];
 
-void main()
+void setup()
 {
     system.data_segment = data_segment;
     system.data_segment_size = DATA_SEGMENT_SIZE;
@@ -50,7 +50,11 @@ void main()
     system.input_buffer = input_buffer;
     system.input_buffer_size = INPUT_BUFFER_SIZE;
 
-    start( &system );
+    forthright_start( &system );
+}
+
+void loop()
+{
 }
 
 // Testing reading chars before implementing serial port.
@@ -68,9 +72,10 @@ int putChar( char ch )
 
 int putChars( char* str, int length )
 {
-    for( int i=0; i < length; i++ )
+    int i=0;
+    while( i < length )
     {
-        int result = putChar( str[i] );
+        int result = putChar( str[i++] );
         if( result < 0 )
         {
             return result;

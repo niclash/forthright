@@ -1,4 +1,9 @@
 
+
+	.global FORTHRIGHT_VERSION
+	.set FORTHRIGHT_VERSION,48
+
+
 /* These are ESP8266 macros to read and write to DataRAM addresses.
  *
  * The DataRAM variables should be declared as
@@ -12,13 +17,9 @@
  */
 
 	.macro DECL_VAR name, space, align
-	.literal .ADDR_\name, \name
 	.data
+	.literal .ADDR_\name, \name
 	.comm \name, \space, \align
-	.endm
-
-	.macro CODE_ADDR reg, address
-	l32r \reg, .CODE_\address
 	.endm
 
 	.macro VAR_ADDR reg, address
