@@ -8,17 +8,34 @@ tried to achieve ANS Forth compliance.
 See https://github.com/chengchangwu/jonesforth
 
 
+## Planned features
+
+    * Debug serial out
+    * GPIO
+    * PWM
+    * ADC
+    * Timer
+    * I2C
+    * SPI
+
+To keep the higher level libraries reasonably portable, I think some constants
+will be required to be defined at Assembler level, or perhaps even in Makefile configuration.
+
+
+## Future CPUs
 Other processors will be considered in the future if this one is successful.
 
 Obvious candidates are;
 
    * ARM
-      TICC32xx CPUs
-      STM
+      * Texas Instrument CC2538, CC32xx controllers
+      * Atmel (now/soon Microchip) range of ARM-based controllers
+      * ST Eectronics ARM range of controllers
+      * Many Linux/Android capable systems
 
-
-
-
+   * 8051
+      * Many Texas Instrument controllers are 8051 based
+      * ST Electronic range of 8051 based controllers.
 
 ## Note for Mac users
 This project requires a cross-compile environment, and Espressif recommends the crosstool-ng
