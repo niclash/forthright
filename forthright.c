@@ -84,6 +84,16 @@ int putChars( char* str, int length )
     return length;
 }
 
+/* Reads characters from the primary serial port to the Forth Input Buffer.
+
+   This is a BLOCKING operation. If there are no characters from the serial port, this method will not return
+   to the caller (typically from assembler).
+
+   If this method is not called often enough to consume the characters from the
+   serial port, characters will be dropped/lost.
+
+   The method returns the number of characters that was written into the 'buffer'.
+*/
 int readChars( char* buffer, int bufsize )
 {
     putChar('o');
@@ -94,4 +104,19 @@ int readChars( char* buffer, int bufsize )
         buffer[i++] = ch;
     }
     return i;
+}
+
+/* This method will send the characters received to the
+   secondary serial port, used for debugging Forthright itself.
+
+   Forthright debugging is currently not implemented, but the Forth words
+   DEBUG_ON and DEBUG_OFF will enable and disable the output from the Forth runtime, and
+   the user program can use DEBUG word to output arbitrary string to the secondary serial port.
+
+   If the port is given more characters than it can handle, it will start discarding output. It will
+   NOT block.
+*/
+void debugOut( char* str, int length )
+{
+
 }

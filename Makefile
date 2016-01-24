@@ -12,6 +12,15 @@ esp8266.o: esp8266.asm
 forthright.o: forthright.s
 	${CC} -U__STRICT_ANSI__  -c -x assembler-with-cpp -MMD -DF_CPU=80000000L forthright.s
 
+# Compile the ASM generated from the C compiler.
+# This extra step is primarily educational, to be able to review what is happening in the C compiler,
+# so we can interface with it from assembler if/when we need to.
+#
+# DATA_SEGMENT_SIZE = The size of the Forth Data Segment, which is where programs are stored and data is allocated long-term
+# DATA_STACK_SIZE = The size of the primary stack, a.k.a the Data Stack
+# RETURN_STACK_SIZE = The size of the return stack, which is only used for entering/returning from Forth words (functions)
+# INPUT_BUFFER_SIZE = The size of the buffer where the characters are placed coming from the serial port (a.k.a terminal)
+#
 forthright.s : forthright.c
 	${CC} \
 	-U__STRICT_ANSI__ \
@@ -25,86 +34,8 @@ forthright.s : forthright.c
 	-DINPUT_BUFFER_SIZE=64 \
 	forthright.c
 
-#forthright: forthright.o esp8266.o
-#	${CC} -g \
-#	-Os \
-#	-nostdlib \
-#	-Wl,--no-check-sections \
-#	-u call_user_start \
-#	-Wl,-static \
-#	-L/Users/niclas/Library/Arduino15/packages/esp8266/hardware/esp8266/2.0.0/tools/sdk/lib \
-#	-L/Users/niclas/Library/Arduino15/packages/esp8266/hardware/esp8266/2.0.0/tools/sdk/ld \
-#	-Teagle.flash.4m1m.ld \
-#	-Wl,--gc-sections \
-#	-Wl,-wrap,system_restart_local \
-#	-Wl,-wrap,register_chipv6_phy  \
-#	-o forthcoming.elf \
-#	-Wl,--start-group \
-#	esp8266.o \
-#	forthright.o \
-#	-lm \
-#	-lgcc \
-#	-lhal \
-#	-lphy \
-#	-lnet80211 \
-#	-llwip \
-#	-lwpa \
-#	-lmain \
-#	-lpp \
-#	-lsmartconfig \
-#	-lwps \
-#	-lcrypto \
-#	-laxtls \
-#	-Wl,--end-group
-
-
+# Linking. Currently unsolved, and needs to be fixed for testing to commence
 forthright: forthright.o esp8266.o
-	${CC} \
-	-DFORTHRIGHT_VERSION=48\
-	-g \
-	-Os \
-	-nostdlib \
-	-Wl,--no-check-sections \
-	-u call_user_start \
-	-Wl,-static \
-	-L/Users/niclas/Library/Arduino15/packages/esp8266/hardware/esp8266/2.0.0/tools/sdk/lib \
-	-L/Users/niclas/Library/Arduino15/packages/esp8266/hardware/esp8266/2.0.0/tools/sdk/ld \
-	-Teagle.flash.4m1m.ld \
-	-Wl,--gc-sections \
-	-Wl,-wrap,system_restart_local \
-	-Wl,-wrap,register_chipv6_phy  \
-	-o forthright.elf \
-	-Wl,--start-group \
-	esp8266.o \
-	forthright.o \
-	"belt/ESP8266WiFi/ESP8266WiFi.cpp.o" \
-	"belt/ESP8266WiFi/ESP8266WiFiMulti.cpp.o" \
-	"belt/ESP8266WiFi/WiFiClient.cpp.o" \
-	"belt/ESP8266WiFi/WiFiClientSecure.cpp.o" \
-	"belt/ESP8266WiFi/WiFiServer.cpp.o" \
-	"belt/ESP8266WiFi/WiFiUdp.cpp.o" \
-	"belt/ESP8266mDNS/ESP8266mDNS.cpp.o" \
-	"belt/ArduinoOTA/ArduinoOTA.cpp.o" \
-	"belt/ESP8266WebServer/ESP8266WebServer.cpp.o" \
-	"belt/ESP8266WebServer/Parsing.cpp.o" \
-	"belt/OneWire/OneWire.cpp.o" \
-	"belt/Arduino-Temperature-Control-Library-3.7.5/DallasTemperature.cpp.o" \
-	"/var/folders/rk/g5qdsrnn4pl1jw6z1_p54llh0000gn/T/buildb42acf51ac3a0e2f0f2ba79c9e2be4bc.tmp/arduino.ar" \
-	-lm \
-	-lgcc \
-	-lhal \
-	-lphy \
-	-lnet80211 \
-	-llwip \
-	-lwpa \
-	-lmain \
-	-lpp \
-	-lsmartconfig \
-	-lwps \
-	-lcrypto \
-	-laxtls \
-	-Wl,--end-group
-
 
 clean:
 	-rm esp8266.o esp8266.d forthright.o forthright.d forthright.s
