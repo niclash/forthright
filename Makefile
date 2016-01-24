@@ -1,7 +1,9 @@
 # $Id: Makefile,v 1.9 2007-10-22 18:53:12 rich Exp $
 
-BUILD_ID_NONE := 
-CC := xtensa-lx106-elf-gcc
+BUILD_ID_NONE :=
+
+# Use compiler from crosstool-ng
+CC := xtensa-esp108-elf-gcc
 SHELL	:= /bin/bash
 
 all:	forthright
@@ -36,6 +38,7 @@ forthright.s : forthright.c
 
 # Linking. Currently unsolved, and needs to be fixed for testing to commence
 forthright: forthright.o esp8266.o
+	echo "Linking not solved yet."
 
 clean:
 	-rm esp8266.o esp8266.d forthright.o forthright.d forthright.s

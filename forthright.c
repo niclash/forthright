@@ -25,7 +25,7 @@ typedef struct
     int word_buffer_counter;
 } system_t;
 
-extern void start( system_t* );
+extern void forthright_start( system_t* );
 
 static void* c_stack_address;
 static void* c_return_address;

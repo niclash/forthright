@@ -8,3 +8,12 @@ tried to achieve ANS Forth compliance.
 See https://github.com/chengchangwu/jonesforth
 
 
+Other processors will be considered in the future if this one is successful.
+
+Obvious candidates are;
+
+   * ARM
+      TICC32xx CPUs
+      STM
+
+
