@@ -1082,6 +1082,30 @@ L13:	WRITETOSX a9
 	WRITETOSX a8
 	NEXT
 
+	defcode "SHIFTL",3,,SHIFTL	// shift bits left
+	POPDATASTACK a8			// number of bits to shift
+	READTOSX a9			// read value
+	ssl a8				// set shift amount register
+	sll a8, a9			// shift the value
+	WRITETOSX a8			// write the shifted value to top of stack
+	NEXT
+
+	defcode "SHIFTR",3,,SHIFTL	// shift bits left (logically, i.e. fills MSBs with zeroes)
+	POPDATASTACK a8			// number of bits to shift
+	READTOSX a9			// read value
+	ssr a8				// set shift amount register
+	srl a8, a9			// shift the value
+	WRITETOSX a8			// write the shifted value to top of stack
+	NEXT
+
+	defcode "SHIFTRA",3,,SHIFTL	// shift bits left (arithmetically, i.e. divide by 2)
+	POPDATASTACK a8			// number of bits to shift
+	READTOSX a9			// read value
+	ssr a8				// set shift amount register
+	sra a8, a9			// shift the value
+	WRITETOSX a8			// write the shifted value to top of stack
+	NEXT
+
 	defcode "INVERT",6,,INVERT // this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
 	READTOSX a8
 	movi a9, 0		// load a9 with zero
