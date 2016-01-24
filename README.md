@@ -17,3 +17,18 @@ Obvious candidates are;
       STM
 
 
+
+
+
+## Note for Mac users
+This project requires a cross-compile environment, and Espressif recommends the crosstool-ng
+project, and provides instructions on how to build that. However, that doesn't work on Mac OSX
+as the "sed" instruction is different in GNU vs the BSD origin of Mac OSX.
+
+Here is what I did (assuming MacPorts is installed)
+
+    sudo port install gsed
+    sudo mv /usr/bin/sed /usr/bin/sed.orig
+    sudo ln -s `which gsed` /usr/bin/sed
+
+That should do the trick and crosstool-ng building.
