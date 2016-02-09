@@ -40,7 +40,11 @@ typedef struct
 
 } system_t;
 
-extern void forthright_setup();
+extern void forthright();
+
+extern int forthright_divide( int a, int b );
+
+extern int forthright_modulo( int a, int b );
 
 extern void forthright_start( system_t* );
 // Testing reading chars before implementing serial port.
@@ -80,7 +84,7 @@ extern int forthright_putChars( char* str, int length );
 */
 extern void forthright_debugOut( char* str, int length  );
 
-extern void forthright_printHex( int pointer );
+extern int forthright_printHex( int value );
 
 extern void forthright_printWord( void* pointer );
 

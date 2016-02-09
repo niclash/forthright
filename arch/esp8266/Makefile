@@ -36,7 +36,7 @@ GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
 SUBDIRS= \
 	common \
-	user \
+	user
 
 endif # } PDIR
 
@@ -52,10 +52,12 @@ TARGET_LDFLAGS = \
 
 ifeq ($(FLAVOR),debug)
 	TARGET_LDFLAGS += -g -O2
+	CCFLAGS += -DDEBUG
 endif
 
 ifeq ($(FLAVOR),release)
 	TARGET_LDFLAGS += -g -O0
+	CCFLAGS += -DDEBUG
 endif
 
 COMPONENTS_eagle.app.v6 = \

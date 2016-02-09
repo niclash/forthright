@@ -130,6 +130,8 @@
 	.endm
 
 	.macro PRINTWORD linkpointer
+#ifdef DEBUG
 	movi a2, \linkpointer
 	C_CALL forthright_printWord
+#ednif
 	.endm

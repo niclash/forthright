@@ -1,9 +1,19 @@
 
 #include "esp_common.h"
+#include "freertos/task.h"
 #include "forthright.h"
 
 static char* WELCOME1 = "    Forthright ver ";
 static char* WELCOME2 = "\n           by\n      Niclas Hedhman\n\n";
+
+static xTaskHandle tasks[8];
+static int primaryPort = 0;
+static int debugPort = 0;
+
+static void forthright_task( void* dummy )
+{
+    forthright();
+}
 
 void user_init(void)
 {
@@ -12,18 +22,9 @@ void user_init(void)
     forthright_putChar( '.' );
     forthright_putChar( '0' + FORTHRIGHT_VERSION_MINOR );
     forthright_putChars( WELCOME2, strlen(WELCOME2) );
-    forthright_setup();
-}
-
-/* Read characters into the buffer, maximum bufsize characters.
- *
- * Returns the number of characters actually read.
- */
-
-static int putCharToSerial( int port, char ch )
-{
-    os_putc(ch);
-    return 1;
+    uart_init_new();
+    UART_SetPrintPort( debugPort );
+    xTaskCreate( forthright_task, "forthright", 256, NULL, 2, &tasks[0] ); // create root FORTH interpreter
 }
 
 static int putCharsToSerial( int port, char* str, int length )
@@ -32,7 +33,7 @@ static int putCharsToSerial( int port, char* str, int length )
     for( i = 0; i < length; i++ )
     {
         char ch = str[i];
-        int result = putCharToSerial( port, ch );
+        int result = uart_tx_one_char(port, ch);
         if( result < 0 )
         {
             return result;
@@ -43,18 +44,12 @@ static int putCharsToSerial( int port, char* str, int length )
 
 int forthright_putChar( char ch )
 {
-    return putCharToSerial( 1, ch );
+    return uart_tx_one_char( primaryPort, ch );
 }
 
 int forthright_putChars( char* str, int length )
 {
-    int addr = (int) str;
-    for( addr = 0; addr < length; addr++ )
-    {
-        os_putc(str[addr]);
-    }
-    os_delay_us(50000);
-    return addr;
+    return putCharsToSerial( primaryPort, str, length );
 }
 
 /* This method will send the characters received to the
@@ -69,17 +64,18 @@ int forthright_putChars( char* str, int length )
 */
 void forthright_debugOut( char* str, int length )
 {
-    putCharsToSerial( 2, str, length );
+    putCharsToSerial( debugPort, str, length );
 }
 
-void forthright_printHex( int value )
+int forthright_printHex( int value )
 {
     printf("%x\n", value);
-    os_delay_us(50000);
+    return value;
 }
 
-/* This routine prints the Word definition.
-*/
+/*
+ * This routine prints the Word definition.
+ */
 void forthright_printWord( void* pointer )
 {
     char buf[32];
@@ -94,72 +90,66 @@ void forthright_printWord( void* pointer )
 
 void forthright_printNL()
 {
-    printf("\n");
+    uart_tx_one_char(debugPort, '\n');
     os_delay_us(50000);
 }
 
 void forthright_printEq()
 {
-    printf("=");
-    os_delay_us(50000);
+    uart_tx_one_char(debugPort, '=');
 }
 
 void forthright_print0()
 {
-    printf("0");
-    os_delay_us(5000);
+    uart_tx_one_char(debugPort, '0');
 }
 
 void forthright_print1()
 {
-    printf("1");
-    os_delay_us(5000);
+    uart_tx_one_char(debugPort, '1');
 }
 
 void forthright_print2()
 {
-    printf("2");
-    os_delay_us(5000);
+    uart_tx_one_char(debugPort, '2');
 }
 
 void forthright_print3()
 {
-    printf("3");
-    os_delay_us(5000);
+    uart_tx_one_char(debugPort, '3');
 }
 
 void forthright_print4()
 {
-    printf("4");
-    os_delay_us(5000);
+    uart_tx_one_char(debugPort, '4');
 }
 
 /* Reads characters from the primary serial port to the Forth Input Buffer.
 
-   This is a BLOCKING operation. If there are no characters from the serial port, this method will not return
-   to the caller (typically from assembler).
+   This is NOT a BLOCKING operation. If there are no characters from the serial port,
+   this method will not return to the caller (typically from assembler).
 
    If this method is not called often enough to consume the characters from the
    serial port, characters will be dropped/lost.
 
    The method returns the number of characters that was written into the 'buffer'.
 */
-
-// Testing reading chars before implementing serial port.
-const char* test = "48 2 + EMIT \n";
-
 int forthright_readChars( char* buffer, int bufsize )
 {
-    printf( "readChars()   -->  " );
-    char ch;
-    int i=0;
-    while( (ch = test[i]) != 0 )
-    {
-        buffer[i++] = ch;
-    }
-    buffer[i] = '\0';
-    os_delay_us(50000);
-    printf( "%s   <ok>\n", buffer);
-    return i;
+    return uart_read_chars( buffer, bufsize-1 );
+}
+
+/* Division hardware is not present in the ESP8266 CPU, and the firmware library for it
+ * is not documented (or I can't find it).
+ *
+ */
+int forthright_divide( int a, int b )
+{
+    return a / b;
+}
+
+int forthright_modulo( int a, int b )
+{
+    return a / b;
 }
 

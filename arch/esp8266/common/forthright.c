@@ -14,7 +14,7 @@ static char input_buffer[INPUT_BUFFER_SIZE];
 static char data_segment[DATA_SEGMENT_SIZE];
 static char word_buffer[MAX_WORD_SIZE];
 
-void forthright_setup()
+void forthright()
 {
     system.data_segment = data_segment;
     system.data_segment_size = DATA_SEGMENT_SIZE;

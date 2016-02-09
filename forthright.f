@@ -44,11 +44,6 @@
 \
 \	FORTH is case-sensitive.  Use capslock!
 
-\ The primitive word /MOD (DIVMOD) leaves both the quotient and the remainder on the stack.  (On
-\ i386, the idivl instruction gives both anyway).  Now we can define the / and MOD in terms of /MOD
-\ and a few other primitives.
-: / /MOD SWAP DROP ;
-: MOD /MOD DROP ;
 
 \ Define some character constants
 : '\n' 10 ;
@@ -180,7 +175,7 @@
 \ In other words, an infinite loop which can only be returned from with EXIT
 : AGAIN IMMEDIATE
 	['] BRANCH ,	\ compile BRANCH
-	HERE -	\ calculate the offset back
+	HERE -		\ calculate the offset back
 	,		\ compile the offset here
 ;
 
@@ -237,17 +232,19 @@
 ;
 
 (
-	From now on we can use ( ... ) for comments.
+	From now on we can use (...) for comments. Note that in THIS FILE, there is no space
+	around the comment parenthesis, to not confuse the parser of this file. So, add extra
+	spaces aroung both parenthesis.
 
 	STACK NOTATION ----------------------------------------------------------------------
 
-	In FORTH style we can also use ( ... -- ... ) to show the effects that a word has on the
+	In FORTH style we can also use (... -- ...) to show the effects that a word has on the
 	parameter stack.  For example:
 
-	( n -- )	means that the word consumes an integer (n) from the parameter stack.
-	( b a -- c )	means that the word uses two integers (a and b, where a is at the top of stack)
+	(n --)	means that the word consumes an integer (n) from the parameter stack.
+	(b a -- c)	means that the word uses two integers (a and b, where a is at the top of stack)
 				and returns a single integer (c).
-	( -- )		means the word has no effect on the stack
+	(--)		means the word has no effect on the stack
 )
 
 ( Some more complicated stack examples, showing the stack notation. )
@@ -282,9 +279,9 @@
 	of the stack and prints it out.  However first I'm going to implement some lower-level
 	FORTH words:
 
-	U.R	( u width -- )	which prints an unsigned number, padded to a certain width
-	U.	( u -- )	which prints an unsigned number
-	.R	( n width -- )	which prints a signed number, padded to a certain width.
+	U.R	(u width --)	which prints an unsigned number, padded to a certain width
+	U.	(u --)		which prints an unsigned number
+	.R	(n width --)	which prints a signed number, padded to a certain width.
 
 	For example:
 		-123 6 .R
@@ -306,7 +303,7 @@
 
 ( This is the underlying recursive definition of U. )
 : U.		( u -- )
-	BASE @ U/MOD	( width rem quot )
+	BASE @ /MOD		( width rem quot )
 	?DUP IF			( if quotient <> 0 then )
 		RECURSE		( print the quotient )
 	THEN
@@ -923,12 +920,12 @@
 	agreed syntax for this, so I've gone for the syntax mandated by the ISO standard
 	FORTH (ANS-FORTH).
 
-		( some value on the stack )
+		(some value on the stack)
 		CASE
 		test1 OF ... ENDOF
 		test2 OF ... ENDOF
 		testn OF ... ENDOF
-		... ( default case )
+		... (default case)
 		ENDCASE
 
 	The CASE statement tests the value on the stack by comparing it for equality with
@@ -949,7 +946,7 @@
 		KEY CASE
 			'q' OF 1 TO QUIT ENDOF
 			's' OF 1 TO SLEEP ENDOF
-			( default case: )
+			(default case:)
 			." Sorry, I didn't understand key <" DUP EMIT ." >, try again." CR
 		ENDCASE
 
@@ -967,7 +964,7 @@
 	test1 OF ... ENDOF		test1 OVER = IF DROP ... ELSE
 	test2 OF ... ENDOF		test2 OVER = IF DROP ... ELSE
 	testn OF ... ENDOF		testn OVER = IF DROP ... ELSE
-	... ( default case )		...
+	... (default case)		...
 	ENDCASE				DROP THEN [THEN [THEN ...]]
 
 	The CASE statement pushes 0 on the immediate-mode parameter stack, and that number
@@ -1017,7 +1014,7 @@
 
 	The general usage is as follows:
 
-		: FOO ( n -- ) THROW ;
+		: FOO (n --) THROW ;
 
 		: TEST-EXCEPTIONS
 			25 ['] FOO CATCH	\ execute 25 FOO, catching any exception
@@ -1032,8 +1029,8 @@
 	CATCH runs an execution token and detects whether it throws any exception or not.  The
 	stack signature of CATCH is rather complicated:
 
-		( a_n-1 ... a_1 a_0 xt -- r_m-1 ... r_1 r_0 0 )		if xt did NOT throw an exception
-		( a_n-1 ... a_1 a_0 xt -- ?_n-1 ... ?_1 ?_0 e )		if xt DID throw exception 'e'
+		(a_n-1 ... a_1 a_0 xt -- r_m-1 ... r_1 r_0 0)		if xt did NOT throw an exception
+		(a_n-1 ... a_1 a_0 xt -- ?_n-1 ... ?_1 ?_0 e)		if xt DID throw exception 'e'
 
 	where a_i and r_i are the (arbitrary number of) argument and return stack contents
 	before and after xt is EXECUTEd.  Notice in particular the case where an exception
@@ -1050,8 +1047,8 @@
 
 	0 THROW does nothing.  This is the stack signature of THROW:
 
-		( 0 -- )
-		( * e -- ?_n-1 ... ?_1 ?_0 e )	the stack is restored to the state from the corresponding CATCH
+		(0 --)
+		(* e -- ?_n-1 ... ?_1 ?_0 e)	the stack is restored to the state from the corresponding CATCH
 
 	The implementation hangs on the definitions of CATCH and THROW and the state shared
 	between them.
@@ -1394,7 +1391,7 @@ LEAVE-SP LEAVE-SP !
 	+---------+---+---+---+---+---+---+---+---+------------+------------+------------+------------+
                    len                         pad  codeword					       ^
 
-	There is one assembler primitive for execution tokens, EXECUTE ( xt -- ), which runs them.
+	There is one assembler primitive for execution tokens, EXECUTE (xt --), which runs them.
 
 	You can make an execution token for an existing word the long way using >CFA,
 	ie: WORD [foo] (FIND) >CFA will push the xt for foo onto the stack where foo is the
@@ -1832,7 +1829,7 @@ DECIMAL
 
 	Another example.  Consider this ordinary FORTH definition:
 
-		: C@++ ( addr -- addr+1 byte ) DUP 1+ SWAP C@ ;
+		: C@++ (addr -- addr+1 byte) DUP 1+ SWAP C@ ;
 
 	(it is equivalent to the C operation '*p++' where p is a pointer to char).  If we
 	notice that all of the words used to define C@++ are in fact assembler primitives,
@@ -1911,7 +1908,7 @@ HIDE =NEXT
 
 : WELCOME
 	S" TEST-MODE" (FIND) NOT IF
-		." JONESFORTH VERSION " VERSION . CR
+		." ForthRight version " VERSION . CR
 		UNUSED . ." CELLS REMAINING" CR
 		." OK "
 	THEN
