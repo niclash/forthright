@@ -25,8 +25,8 @@ SPI_SIZE_MAP = 6
 BIN_PATH = ${PWD}/target/
 TARGET = eagle
 
-#FLAVOR = release
-FLAVOR = debug
+FLAVOR = release
+#FLAVOR = debug
 
 #EXTRA_CCFLAGS += -u
 
@@ -57,7 +57,7 @@ endif
 
 ifeq ($(FLAVOR),release)
 	TARGET_LDFLAGS += -g -O0
-	CCFLAGS += -DDEBUG
+	CCFLAGS += -DRELEASE
 endif
 
 COMPONENTS_eagle.app.v6 = \

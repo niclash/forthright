@@ -207,7 +207,12 @@ void uart_init_new(void)
     uart_intr.UART_TX_FifoEmptyIntrThresh = 20;
     UART_IntrConfig(UART0, &uart_intr);
 
+#ifdef DEBUG
     UART_SetPrintPort(UART0);
+#else
+    UART_SetPrintPort(UART1);
+#endif
+
     UART_intr_handler_register(uart0_rx_intr_handler, 0);
     ETS_UART_INTR_ENABLE();
 

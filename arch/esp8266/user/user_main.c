@@ -3,12 +3,14 @@
 #include "freertos/task.h"
 #include "forthright.h"
 
-static char* WELCOME1 = "    Forthright ver ";
-static char* WELCOME2 = "\n           by\n      Niclas Hedhman\n\n";
-
 static xTaskHandle tasks[8];
 static int primaryPort = 0;
+
+#ifdef DEBUG
 static int debugPort = 0;
+#else
+static int debugPort = 1;
+#endif
 
 static void forthright_task( void* dummy )
 {
@@ -17,11 +19,6 @@ static void forthright_task( void* dummy )
 
 void user_init(void)
 {
-    forthright_putChars( WELCOME1, strlen(WELCOME1) );
-    forthright_putChar( '0' + FORTHRIGHT_VERSION_MAJOR );
-    forthright_putChar( '.' );
-    forthright_putChar( '0' + FORTHRIGHT_VERSION_MINOR );
-    forthright_putChars( WELCOME2, strlen(WELCOME2) );
     uart_init_new();
     UART_SetPrintPort( debugPort );
     xTaskCreate( forthright_task, "forthright", 256, NULL, 2, &tasks[0] ); // create root FORTH interpreter
@@ -85,13 +82,11 @@ void forthright_printWord( void* pointer )
     memcpy( buf, (((char *) pointer) + 5 ), length );
     buf[length] = '\0';
     printf( " -  %s\n", buf );
-    os_delay_us(50000);
 }
 
 void forthright_printNL()
 {
     uart_tx_one_char(debugPort, '\n');
-    os_delay_us(50000);
 }
 
 void forthright_printEq()
