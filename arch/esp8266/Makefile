@@ -21,6 +21,7 @@ APP = 0
 SPI_SPEED = 40 
 SPI_MODE = DIO 
 SPI_SIZE_MAP = 6
+CUSTOM_LD_FILE = ${PWD}/user/eagle.app.v6.common.ld
 
 BIN_PATH = ${PWD}/target/
 TARGET = eagle
@@ -68,7 +69,7 @@ LINKFLAGS_eagle.app.v6 = \
 	-L$(SDK_PATH)/lib \
 	-Wl,--gc-sections \
 	-nostdlib \
-	-T$(LD_FILE)   \
+	-T$(CUSTOM_LD_FILE)   \
 	-Wl,--no-check-sections \
 	-u call_user_start \
 	-Wl,-static \
@@ -88,7 +89,7 @@ LINKFLAGS_eagle.app.v6 = \
 	-Wl,--end-group
 
 DEPENDS_eagle.app.v6 = \
-		$(LD_FILE) \
+		$(CUSTOM_LD_FILE) \
 		$(LDDIR)/eagle.rom.addr.v6.ld
 
 #############################################################

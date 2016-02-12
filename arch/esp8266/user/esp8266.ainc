@@ -110,7 +110,7 @@
 /* Definition of static text, and putChars macro for output. */
 
 	.macro S_TEXT name, value
-	.text
+	.section .irom0.text
 	.align 4
 	.literal TEXT_ADDR_\name, TEXT_\name
 	.section .rodata
