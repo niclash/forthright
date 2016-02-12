@@ -26,8 +26,6 @@
 #include "freertos/FreeRTOS.h"
 #include "uart.h"
 
-static int echo = TRUE;
-
 LOCAL int tx_fifo_count(int uart)
 {
     uint32 fifo_cnt = READ_PERI_REG(UART_STATUS(uart)) & (UART_TXFIFO_CNT << UART_TXFIFO_CNT_S);
@@ -243,10 +241,6 @@ int uart_read_chars( char* buffer, int bufsize )
     while( count < bufsize && count < fifo_len )
     {
         uint8 rcvChar = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
-        if( echo )
-        {
-            uart_tx_one_char( 0, rcvChar );
-        }
         buffer[count++] = rcvChar;
     }
     return count;
