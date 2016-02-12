@@ -1437,7 +1437,7 @@ L14:	l8ui a11,a10,0		// fetch a byte
 _KEY:
 	READ_VAR a9, system_t_currkey
 	READ_VAR a8, system_t_bufftop
-	bge a9, a8, L15_1
+	bge a9, a8, L15
 	l8ui a8, a9, 0				// get next key from input buffer
 	addi a9, a9, 1				// increment currkey
 	WRITE_VAR a9, system_t_currkey		// save currkey

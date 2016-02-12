@@ -48,12 +48,12 @@ int uart_tx_one_char(uint8 uart, uint8 ch)
     return OK;
 }
 
-LOCAL void uart1_write_char(char c)
+void uart1_write_char(char c)
 {
     uart_tx_one_char(UART1, c);
 }
 
-LOCAL void uart0_write_char(char c)
+void uart0_write_char(char c)
 {
     uart_tx_one_char(UART0, c);
 }
