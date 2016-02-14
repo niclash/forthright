@@ -579,7 +579,7 @@
 
 	S_TEXT errmsg1, "Error at: "
 	S_TEXT NL "\n"
-	S_TEXT welcome_text, "    Forthright ver "
+	S_TEXT OUT_OF_MEMORY, "Error: Data segment is full!"
 
         .equ TEXT_SIZE_welcome, (TEXT_errmsg1-TEXT_welcome)
 
@@ -777,7 +777,7 @@ name_\label :
 	//.align 4
 	.globl code_\label
 code_\label :			// assembler code follows
-	PRINTWORD name_\label
+//	PRINTWORD name_\label
 	.endm
 
 /*
@@ -790,39 +790,39 @@ code_\label :			// assembler code follows
 	addi a15, a15, 4		// drop top of stack
 	NEXT
 
-	defcode "SWAP",4,,SWAP
+	defcode "SWAP",4,,SWAP		// X <-> Y
 	READTOSX a8
 	READTOSY a9
 	WRITETOSX a9
 	WRITETOSY a8
 	NEXT
 
-	defcode "DUP",3,,DUP
+	defcode "DUP",3,,DUP		// PUSH X
 	READTOSX a8
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "OVER",4,,OVER
+	defcode "OVER",4,,OVER		// PUSH Y
 	READTOSY a8
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "ROT",3,,ROT
+	defcode "ROT",3,,ROT		// HP RPN (ROTATE UP)
 	READTOSX a8
 	READTOSY a9
 	READTOSZ a10
-	WRITETOSZ a9
-	WRITETOSY a8
-	WRITETOSX a10
+	WRITETOSZ a9			// Y -> Z
+	WRITETOSY a8			// X -> Y
+	WRITETOSX a10			// Z -> X
 	NEXT
 
-	defcode "-ROT",4,,NROT
+	defcode "-ROT",4,,NROT		// HP RPN (ROTATE DOWN)
 	READTOSX a8
 	READTOSY a9
 	READTOSZ a10
-	WRITETOSZ a8
-	WRITETOSY a10
-	WRITETOSX a9
+	WRITETOSZ a8			// X -> Z
+	WRITETOSY a10			// Z -> Y
+	WRITETOSX a9			// Y -> X
 	NEXT
 
 	defcode "2DROP",5,,TWODROP	// drop top two elements of stack
@@ -1073,6 +1073,14 @@ L13:	WRITETOSX a9
 	WRITETOSX a8
 	NEXT
 
+	defcode "INVERT",6,,INVERT // this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
+	READTOSX a8
+	movi a9, 0		// load a9 with zero
+	addi a9, a9, -1		// a9 is now all zero
+	xor a8, a8, a9		// Negate all bits
+	WRITETOSX a8
+	NEXT
+
 	defcode "SHIFTL",3,,SHIFTL	// shift bits left
 	POPDATASTACK a8			// number of bits to shift
 	READTOSX a9			// read value
@@ -1097,14 +1105,6 @@ L13:	WRITETOSX a9
 	WRITETOSX a8			// write the shifted value to top of stack
 	NEXT
 
-	defcode "INVERT",6,,INVERT // this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
-	READTOSX a8
-	movi a9, 0		// load a9 with zero
-	addi a9, a9, -1		// a9 is now all zero
-	xor a8, a8, a9		// Negate all bits
-	WRITETOSX a8
-	NEXT
-
 /*
 	RETURNING FROM FORTH WORDS ----------------------------------------------------------------------
 
@@ -1122,7 +1122,7 @@ L13:	WRITETOSX a9
 		| addr of EXIT	   |		   +------------------+
 		+------------------+	   	   | addr of +        |
 						   +------------------+
-					   %esi -> | addr of EXIT     |
+					    a14 -> | addr of EXIT     |
 						   +------------------+
 
 	What happens when the + function does NEXT?  Well, the following code is executed.
@@ -1177,6 +1177,9 @@ L13:	WRITETOSX a9
 */
 
 	defcode "LIT",3,,LIT
+	// a14 points to the next command, but in this case it points to the next
+	// literal 32 bit integer.  Get that literal into a8 and increment a14.
+	// (cf. NEXT macro)
 	l32i a8, a14, 0		// get next value where instruction pointer is pointing to
 	addi a14, a14, 4	// skip literal value
 	PUSHDATASTACK a8	// push to data stack
@@ -1248,7 +1251,7 @@ L13:	WRITETOSX a9
 	WRITETOSY a9		// write source address
 	NEXT
 
-/* and CMOVE is a block copy operation. */
+/* and CMOVE is a block copy operation.  TODO: ??optimize with 32bit fetches?? */
 	defcode "CMOVE",5,,CMOVE
 	POPDATASTACK a8		// length
 	POPDATASTACK a9		// destination address
@@ -1350,19 +1353,20 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	the top of the return stack.
 */
 	defcode "R0",2,,RZ
-	addi a8, a12, system_t_return_stack_size	// Trick: add offset to system_t pointer to get the
-							// location of top of the return stack
+	READ_VAR a8, system_t_return_stack		// location of stack
+	READ_VAR a9, system_t_return_stack_size		// size of stack
+	add a8, a8, a9					// pointer to 'beyond stack', i.e. R0
 	PUSHDATASTACK a8
 	NEXT
 
 	defcode ">R",2,,TOR
-	POPDATASTACK a8		// pop parameter stack into a8
-	PUSHRSP a8		// push it on to the return stack
+	POPDATASTACK a8					// pop parameter stack into a8
+	PUSHRSP a8					// push it on to the return stack
 	NEXT
 
 	defcode "R>",2,,FROMR
-	POPRSP a8		// pop return stack on to a8
-	PUSHDATASTACK a8	// and push on to parameter stack
+	POPRSP a8					// pop return stack on to a8
+	PUSHDATASTACK a8				// and push on to parameter stack
 	NEXT
 
 	defcode "RSP@",4,,RSPFETCH
@@ -1377,6 +1381,71 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	addi a13, a13, 4		// pop return stack and throw away
 	NEXT
 
+/* Debugging routines... Print Data Stack and Print Return Stack */
+
+printDS:
+	PUSHRSP a2
+	PUSHRSP a8
+	PUSHRSP a9
+
+	READ_VAR a9, system_t_data_stack
+	READ_VAR a8, system_t_data_stack_size
+	add a9, a9, a8			// a9 contains Top of Data Stack
+	sub a8, a9, a15			// a8 = length of data stack
+
+	PUSHRSP a9
+	mov a2, a8
+	C_CALL forthright_printHex1	// print value
+	POPRSP a9
+
+printDS_Loop:
+	beqz a8, printDS_End		// stop loop if stack is empty
+	addi a9, a9, -4			// move to next element
+	l32i a2, a9, 0			// read value on stack
+	PUSHRSP a9
+	C_CALL forthright_printHex1	// print value
+	POPRSP a9
+	addi a8, a8, -4			// decrement count
+	j printDS_Loop
+
+printDS_End:
+	C_CALL forthright_printNL1
+	POPRSP a9
+	POPRSP a8
+	POPRSP a2
+	ret
+
+printRS:
+	PUSHDATASTACK a2
+	PUSHDATASTACK a8
+	PUSHDATASTACK a9
+
+	READ_VAR a9, system_t_return_stack
+	READ_VAR a8, system_t_return_stack_size
+	add a9, a9, a8			// a9 contains Top of Return Stack
+	sub a8, a9, a13			// a8 = length of return stack
+
+	PUSHDATASTACK a9
+	mov a2, a8
+	C_CALL forthright_printHex1	// print value
+	POPDATASTACK a9
+
+printRS_Loop:
+	beqz a8, printRS_End		// stop loop if stack is empty
+	addi a9, a9, -4			// move to next element
+	l32i a2, a9, 0			// read value on stack
+	PUSHDATASTACK a9
+	C_CALL forthright_printHex1	// print value
+	POPDATASTACK a9
+	addi a8, a8, -4			// decrement count
+	j printRS_Loop
+
+printRS_End:
+	C_CALL forthright_printNL1
+	POPDATASTACK a9
+	POPDATASTACK a8
+	POPDATASTACK a2
+	ret
 /*
 	PARAMETER (DATA) STACK ----------------------------------------------------------------------
 
@@ -1385,11 +1454,14 @@ L14:	l8ui a11,a10,0		// fetch a byte
 */
 
 	defcode "DSP@",4,,DSPFETCH
-	PUSHDATASTACK a15
+	mov a8, a15		// get data stack pointer
+	addi a15, a15, -4	// make space on data stack
+	s32i a8, a15, 0		// store previous dsp on stack.
 	NEXT
 
+
 	defcode "DSP!",4,,DSPSTORE
-	POPDATASTACK a15
+	l32i a15, a15, 0	// pop top of data stack to data stack pointer
 	NEXT
 
 /*
@@ -1450,12 +1522,47 @@ _KEY:
 
 
 L15:	// Out of input;
+	READ_VAR a8, system_t_initializing	// check if we should read from .text section
+	beqz a8, L15_1				// jump if not in initializing mode
+
+	// if we are initializing, we will be reading characters from instruction memory, and
+	// on the ESP8266 that will fail. Instead, we need to load with 4 bytes at a time. So,
+	// we load 4 bytes, put that into the input buffer and then let regular _KEY take it
+	// from there.
+	// We use input_buffer + 4 and to store the position. If that position is 0, it means
+	// we are just starting.
+
+L15_3:
+	READ_VAR a8, system_t_input_buffer	// pointer to input buffer
+	l32i a9, a8, 4				// load position in FORTH code
+	beqz a9, L15_2				// jump if not to be initialized
+
+	l32i a10, a9, 0				// read 4 characters
+	s32i a10, a8, 0				// store 4 characters in input buffer
+	addi a9, a9, 4				// move source pointer forward 4 characters
+	s32i a9, a8, 4				// store source pointer
+	WRITE_VAR a8, system_t_currkey		// set the currkey to only point to beginning
+	j _KEY
+
+
+L15_2:	// initialize reading standard vocabulary
+	WRITE_VAR a8, system_t_currkey		// set the currkey to only point to beginning
+						// of input buffer, as it will be served 4
+						// bytes at the time.
+
+	l32r a9, ADDR_FORTH_SOURCE		// get the address to the FORTH source code
+	s32i a9, a8, 4				// store the current position into the
+						// input_buffer+4
+
+	addi a8, a8, 4				// move a8 forward
+	WRITE_VAR a8, system_t_bufftop		// write the end of valid input to bufftop
+	j L15_3
+
+L15_1:
 	// use C routine forthright_readChars(2) to fetch more input.
 	READ_VAR a2, system_t_input_buffer
 	READ_VAR a3, system_t_input_buffer_size
-
 	C_CALL forthright_readChars		// call C readChars()
-
 	bltz a2, EXIT_TO_C			// If an error is returned, abort and exit Forth
 	READ_VAR a8, system_t_input_buffer	// get address of beginning of input buffer
 	WRITE_VAR a8, system_t_currkey		// store it into currkey pointer
@@ -1673,18 +1780,22 @@ _NUMBER_ERROR:
 */
 
 /* Is used sometimes for debugging. Will be removed later
+*/
 	defcode "PRINTWORD",9,,PRINTWORD
 	READTOSX a2
-	C_CALL forthright_printHex
+	C_CALL forthright_printHex0
 	POPDATASTACK a2
-	C_CALL forthright_printWord
+	C_CALL forthright_printWord0
 	NEXT
 
 	defcode "PRINTHEX",8,,PRINTHEX
 	POPDATASTACK a2
-	C_CALL forthright_printHex
+	C_CALL forthright_printHex0
 	NEXT
-*/
+
+	defcode "PRINTNL",7,,PRINTNL
+	C_CALL forthright_printNL0
+	NEXT
 
 	defcode "(FIND)",6,,PAREN_FIND
 	POPDATASTACK a3				// a3 = length
@@ -1962,17 +2073,34 @@ _TCFA:
 
 	defcode "HEADER,",7,,HEADER_COMMA
 
-	// Get the name length and address.
-	POPDATASTACK a9			// a9 = length
-	POPDATASTACK a10		// a10 = address of name
-
 	// Link pointer.
-	READ_VAR a11, system_t_dp	// a11 is the address of the header, i.e. the top of memory available.
+	READ_VAR a11, system_t_dp			// a11 is the address of the header, i.e. the top
+							// of memory available.
+
+	mov a8, a11					// get the DP
+	READ_VAR a9, system_t_data_segment		// Read beginning of data segment
+	sub a9, a11, a9					// How much space has been used
+	READ_VAR a8, system_t_data_segment_size		// How much space do we have?
+
+	blt a9, a8, L30_1
+
+	// at this point, we have exhausted the data segment,
+	// report it and refuse to accept the definition.
+	PRINTS OUT_OF_MEMORY
+	NEXT
+
+L30_1:
 	READ_VAR a8, system_t_latest	// Get link pointer
-	s32i a8, a11, 0			// and store it in the header.
+	s32i a8, a11, 0			// store link pointer in the header.
+
+	// Get the name length .
+	POPDATASTACK a9			// a9 = length
 
 	// Length byte and the word itself.
 	s8i a9, a11, 4			// Store the length/flags byte.
+
+	// get the address of the name
+	POPDATASTACK a10		// a10 = address of name
 L30:
 	l8ui a8, a10, 0			// read name character
 	s8i a8, a11, 5			// store in header  (5 bytes in, i.e. LINK + LENGTH comes first)
@@ -2352,6 +2480,8 @@ L31:	addi a8, a8, 8
 	bnez a9, L35				// If IMMED, jump straight to executing.
 	j L33
 
+	.literal .ADDR_TO_LIT, LIT
+
 L32:	// Not in the dictionary (not a word) so assume it's a literal number.
 	READ_VAR a8, system_t_interpret_is_lit
 	addi a8, a8, 1
@@ -2364,9 +2494,7 @@ L32:	// Not in the dictionary (not a word) so assume it's a literal number.
 	call0 _NUMBER				// Returns the parsed number in a2, a3 > 0 if error
 	bnez a3, L37				// branch if there was an error
 	mov a10, a2				// store number in a10
-
-	.literal .ADDR_TO_LIT, LIT
-	l32r a8, .ADDR_TO_LIT			// The word is LIT, a8 points now points to the code for the literal??
+	l32r a2, .ADDR_TO_LIT			// The word is LIT, a8 points now points to the code for the literal??
 
 L33:	// Are we compiling or executing?
 	READ_VAR a11, system_t_state
@@ -2375,7 +2503,7 @@ L33:	// Are we compiling or executing?
 	// Compiling - just append the word to the current dictionary definition.
 	call0 _COMMA				// a2 must contain the integer to be stored, a posibility of
 	 					//    1: a dictionary word pointer returned by _WORD
-						//    2: an integer returned from _NUMBER,
+						//    2: address to LIT, indicating integer returned from _NUMBER,
 	READ_VAR a9, system_t_interpret_is_lit	// Was it a literal?
 	beqz a9, L34
 	mov a2, a10				// Yes, so LIT is followed by a number.
@@ -2447,19 +2575,19 @@ L40:
 	NEXT
 
 	defcode "(+LOOP)", 7,,PAREN_PLUS_LOOP
-	POP2RSP a11, a8		// index in a8, limit in a11
-	sub a8, a8, a11		// index-limit in a8
-	POPDATASTACK a9		// n in a9
-	add a9, a8, a9		// index-limit+n in a9
-	xor a9, a9, a8		// (index-limit) and (index-limit+n) have different sign?
-	bltz a9, L41
-	add a9, a11, a9		// index+n in a9
-	PUSH2RSP a11, a9
-	l32i a8, a14, 0		// read jump offset
+	POP2RSP a9, a8		// index in a8, limit in a9
+	sub a8, a8, a9		// index-limit in %eax
+	POPDATASTACK a10	// n in %ebx
+	add a10, a10, a8	// index-limit+n in %ebx
+	xor a11, a10, a8	// (index-limit) and (index-limit+n) have different sign?
+	bltz a11, L41
+	add a10, a10, a9	// index+n in %ebx
+	PUSH2RSP a9, a10
+	l32i a8, a14, 0
 	add a14, a14, a8	// add the offset to the instruction pointer
 	NEXT
 L41:
-	addi a14, a14, 4	// Advance instruction pointer
+	addi a14, a14, 4	// advance instruction pointer
 	NEXT
 
 	defcode "UNLOOP", 6,,UNLOOP
@@ -2485,10 +2613,6 @@ L41:
 	EXECUTE is used to run execution tokens.  See the discussion of execution tokens in the
 	FORTH code for more details.
 
-	SYSCALL0, SYSCALL1, SYSCALL2, SYSCALL3 make a standard Linux system call.  (See <asm/unistd.h>
-	for a list of system call numbers).  As their name suggests these forms take between 0 and 3
-	syscall parameters, plus the system call number.
-
 	In this FORTH, EXECUTE must be the last word in the built-in (assembler) dictionary because we
 	initialise the LATEST variable to point to it.  This means that if you want to extend the assembler
 	part, you must put new words before EXECUTE, or else change how LATEST is initialised.
@@ -2501,10 +2625,10 @@ L41:
 	NEXT
 
 
-//	defcode "INITIALIZING-DONE",17,,INITIALIZEDONE
-//	movi a8, 0
-//	WRITE_VAR a8, system_t_initializing		// clear initializing flag
-//	NEXT
+	defcode "INIT-DONE",17,,INITIALIZEDONE
+	movi a8, 0
+	WRITE_VAR a8, system_t_initializing		// clear initializing flag
+	NEXT
 
 	defcode "EXECUTE",7,,EXECUTE
 	s32i a8, a15, 0
@@ -2582,12 +2706,17 @@ forthright_start:
 	mov a12, a2				// set the System Environment pointer
 
 	READ_VAR a13, system_t_return_stack
+	READ_VAR a8, system_t_return_stack_size
+	add a13, a13, a8			// set up the return stack
+
 	READ_VAR a15, system_t_data_stack
+	READ_VAR a8, system_t_data_stack_size
+	add a15, a15, a8			// set up data stack
+
 	WRITE_VAR a15, system_t_s0		// save beginning of stack
 
 	READ_VAR a11, system_t_data_segment	// fet start position of data segment
 	WRITE_VAR a11, system_t_dp		// save Forth variable named DP
-
 
 	READ_VAR a8, system_t_input_buffer	// get position of Input Buffer
 	READ_VAR a9, system_t_input_buffer_size	// get size of Input Buffer
@@ -2597,8 +2726,8 @@ forthright_start:
 	movi a8, 10
 	WRITE_VAR a8, system_t_base		// set BASE to 10
 
-//	movi a8, -1
-//	WRITE_VAR a8, system_t_initializing	// set initializing flag
+	movi a8, -1
+	WRITE_VAR a8, system_t_initializing	// set initializing flag
 
 	l32r a8, LAST_WORD_IN_DICTIONARY	//
 	WRITE_VAR a8, system_t_latest		// set BASE to 10
@@ -2622,17 +2751,14 @@ EXIT_TO_C:				// Error or end of input: exit the program.
 
 	I used to append this here in the assembly file, but I got sick of fighting against gas's
 	crack-smoking (lack of) multiline string syntax.  So now that is in a separate file called
-	jonesforth.f
-
-	If you don't already have that file, download it from http://annexia.org/forth in order
-	to continue the tutorial.
+	forthright.f
 */
 
+	.align 4
 	.literal ADDR_FORTH_SOURCE, FORTH_SOURCE
-	.literal ADDR_AFTER_FORTH_SOURCE, FORTH_SOURCE_END
 
+	.align 4
 FORTH_SOURCE:
 	.include "../generated/forthright.asm"
-FORTH_SOURCE_END:
 
 /* END OF esp8266.S */

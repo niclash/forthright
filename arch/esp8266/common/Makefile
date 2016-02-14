@@ -26,9 +26,9 @@ endif
 #   makefile at its root level - these are then overridden
 #   for a subtree within the makefile rooted therein
 #
-DEFINES +=-DDATA_SEGMENT_SIZE=4096 \
-           -DDATA_STACK_SIZE=256 \
-           -DRETURN_STACK_SIZE=256 \
+DEFINES +=-DDATA_SEGMENT_SIZE=8192 \
+           -DDATA_STACK_SIZE=512 \
+           -DRETURN_STACK_SIZE=512 \
            -DINPUT_BUFFER_SIZE=64
 
 

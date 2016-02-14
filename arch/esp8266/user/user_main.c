@@ -64,27 +64,54 @@ void forthright_debugOut( char* str, int length )
     putCharsToSerial( debugPort, str, length );
 }
 
-int forthright_printHex( int value )
+int forthright_printHex0( int value )
 {
-    printf("%x\n", value);
+    char buf[12];
+    sprintf(buf, "%x ", value);
+    forthright_putChars( buf, strlen(buf));
+    return value;
+}
+
+int forthright_printHex1( int value )
+{
+    char buf[12];
+    sprintf(buf, "%x ", value);
+    forthright_debugOut( buf, strlen(buf));
     return value;
 }
 
 /*
  * This routine prints the Word definition.
  */
-void forthright_printWord( void* pointer )
+void forthright_printWord0( void* pointer )
 {
     char buf[32];
     void* nextWord = pointer;
     char length_flags = *(((char *) pointer) + 4 );
     int length = length_flags & 31;
-    memcpy( buf, (((char *) pointer) + 5 ), length );
-    buf[length] = '\0';
-    printf( " -  %s\n", buf );
+    forthright_putChars( ((char * ) pointer)+5, length);
 }
 
-void forthright_printNL()
+/*
+ * This routine prints the Word definition.
+ */
+void forthright_printWord1( void* pointer )
+{
+    char buf[32];
+    void* nextWord = pointer;
+    char length_flags = *(((char *) pointer) + 4 );
+    int length = length_flags & 31;
+    forthright_debugOut( "  - ", 4 );
+    forthright_debugOut( ((char * ) pointer)+5, length);
+    forthright_debugOut( "\n", 1 );
+}
+
+void forthright_printNL0()
+{
+    uart_tx_one_char(primaryPort, '\n');
+}
+
+void forthright_printNL1()
 {
     uart_tx_one_char(debugPort, '\n');
 }

@@ -37,6 +37,7 @@ typedef struct
     void* currkey;			// offset 68
     void* bufftop;			// offset 72
     int interpret_is_lit;		// offset 76
+    int initializing;			// offset 80
 
 } system_t;
 

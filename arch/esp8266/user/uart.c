@@ -34,12 +34,13 @@ LOCAL int tx_fifo_count(int uart)
 
 int uart_tx_one_char(uint8 uart, uint8 ch)
 {
+            os_delay_us( 2000 );
     if( ch == '\n') {
         uart_tx_one_char(UART1, '\r');
     } else {
         while(tx_fifo_count(uart) >= 126 )
         {
-            // yield, I guess. But how??
+            os_delay_us( 2000 );
         }
     }
     WRITE_PERI_REG(UART_FIFO(uart) , ch);
@@ -191,7 +192,7 @@ void uart_init_new(void)
     UART_WaitTxFifoEmpty(UART1);
 
     UART_ConfigTypeDef uart_config;
-    uart_config.baud_rate = BIT_RATE_74880;
+    uart_config.baud_rate = BIT_RATE_115200;
     uart_config.data_bits = UART_WordLength_8b;
     uart_config.parity    = USART_Parity_None;
     uart_config.stop_bits = USART_StopBits_1;
@@ -199,6 +200,7 @@ void uart_init_new(void)
     uart_config.UART_RxFlowThresh = 120;
     uart_config.UART_InverseMask = UART_None_Inverse;
     UART_ParamConfig(UART0, &uart_config);
+    UART_ParamConfig(UART1, &uart_config);
 
     UART_IntrConfTypeDef uart_intr;
     uart_intr.UART_IntrEnMask = UART_FRM_ERR_INT_ENA | UART_RXFIFO_FULL_INT_ENA;
@@ -218,9 +220,9 @@ void uart_init_new(void)
 
     /*
     UART_SetWordLength(UART0,UART_WordLength_8b);
+    UART_SetBaudrate(UART1,BIT_RATE_115200);
     UART_SetStopBits(UART0,USART_StopBits_1);
     UART_SetParity(UART0,USART_Parity_None);
-    UART_SetBaudrate(UART0,74880);
     UART_SetFlowCtrl(UART0,USART_HardwareFlowControl_None,0);
     */
 }

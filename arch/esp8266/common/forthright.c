@@ -5,6 +5,7 @@
 */
 
 #include "forthright.h"
+#include "stdio.h"
 
 static system_t system;
 
@@ -16,6 +17,13 @@ static char word_buffer[MAX_WORD_SIZE];
 
 void forthright()
 {
+    printf( "      system : %X\n", &system );
+    printf( "  data_stack : %X\n", data_stack );
+    printf( "return_stack : %X\n", return_stack );
+    printf( "input_buffer : %X\n", input_buffer );
+    printf( "data_segment : %X\n", data_segment );
+    printf( " word_buffer : %X\n", word_buffer );
+
     system.data_segment = data_segment;
     system.data_segment_size = DATA_SEGMENT_SIZE;
 
@@ -33,4 +41,3 @@ void forthright()
 
     forthright_start( &system );
 }
-

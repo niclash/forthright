@@ -60,6 +60,7 @@
 	.equ	system_t_currkey,68
 	.equ	system_t_bufftop,72
 	.equ	system_t_interpret_is_lit,76
+	.equ	system_t_initializing,80
 
 	.macro READ_VAR reg, member
 	l32i \reg, a12, \member
@@ -131,8 +132,6 @@
 	.endm
 
 	.macro PRINTWORD linkpointer
-#ifdef DEBUG
 	movi a2, \linkpointer
-	C_CALL forthright_printWord
-#ednif
+	C_CALL forthright_printWord1
 	.endm
