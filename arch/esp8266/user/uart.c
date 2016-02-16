@@ -34,7 +34,6 @@ LOCAL int tx_fifo_count(int uart)
 
 int uart_tx_one_char(uint8 uart, uint8 ch)
 {
-            os_delay_us( 2000 );
     if( ch == '\n') {
         uart_tx_one_char(UART1, '\r');
     } else {

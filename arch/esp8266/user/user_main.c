@@ -67,7 +67,15 @@ void forthright_debugOut( char* str, int length )
 int forthright_printHex0( int value )
 {
     char buf[12];
-    sprintf(buf, "%x ", value);
+    sprintf(buf, "%X ", value);
+    forthright_putChars( buf, strlen(buf));
+    return value;
+}
+
+int printDec( int value )
+{
+    char buf[12];
+    sprintf(buf, "%d ", value);
     forthright_putChars( buf, strlen(buf));
     return value;
 }
@@ -75,9 +83,21 @@ int forthright_printHex0( int value )
 int forthright_printHex1( int value )
 {
     char buf[12];
-    sprintf(buf, "%x ", value);
+    sprintf(buf, "%X ", value);
     forthright_debugOut( buf, strlen(buf));
     return value;
+}
+
+static void printWord( void* pointer, int all )
+{
+    char buf[32];
+    void* nextWord = *((void**)pointer);
+    if( all )
+        forthright_printHex0( (int) nextWord );
+
+    char length_flags = *(((char *) pointer) + 4 );
+    int length = length_flags & 31;
+    forthright_putChars( ((char * ) pointer)+5, length);
 }
 
 /*
@@ -85,11 +105,85 @@ int forthright_printHex1( int value )
  */
 void forthright_printWord0( void* pointer )
 {
-    char buf[32];
-    void* nextWord = pointer;
-    char length_flags = *(((char *) pointer) + 4 );
-    int length = length_flags & 31;
-    forthright_putChars( ((char * ) pointer)+5, length);
+    printWord(pointer, TRUE);
+}
+
+
+static int findAndPrint( void* latest, void* toFind )
+{
+    void* current = latest;
+    while( current )
+    {
+        if( current < toFind )
+        {
+            printWord( current, FALSE );
+            forthright_putChar( ' ' );
+            return 0;
+        }
+        current = *((void**) current);
+    }
+    return -1;
+}
+
+static void printEntry(void* start, void* end, void* docol, void* latest )
+{
+    forthright_printWord0( start );
+    start = (void*) (((char*) start) + 4);
+    char immediate = (*(((char *) start))) & 0x80;
+    char length = (*(((char *) start))) & 0x1F;
+    start = (void*) ((((int) start) + length + 4) & ~3);
+
+    forthright_putChar( ' ' );
+    forthright_putChar( ':' );
+    forthright_putChar( ' ' );
+    while( start < end )
+    {
+        void* defWord = *((void**)start);
+        if( defWord == docol )
+        {
+            forthright_putChars( "DOCOL ", 6 );
+            if( immediate )
+                forthright_putChars( "IMMEDIATE ", 10 );
+        }
+        else if( (int) defWord > 0xFFFF0000 )
+        {
+            printDec( (int) defWord );
+        }
+        else if( (int) defWord > 0xFFFF0000 )
+        {
+            printDec( (int) defWord );
+        }
+        else if( (int) defWord > 0x40000000 )
+        {
+            forthright_putChars( "<ASM:", 5 );
+            forthright_printHex0( (int) defWord );
+            forthright_putChar( '>' );
+            break;
+        }
+        else
+        {
+            if( findAndPrint(latest, defWord) )
+            {
+                forthright_printHex0( (int) defWord );
+            }
+        }
+        start = (void*) (((char*) start) + 4);
+    }
+    forthright_putChar( '\n' );
+    forthright_putChar( '\n' );
+
+}
+
+void forthright_printDictionary( void* dp, void* latest, void* docol )
+{
+    void* previous = dp;
+    void* current = latest;
+    while( current )
+    {
+        printEntry( current, previous, docol, latest );
+        previous = current;
+        current = *((void**) current);
+    }
 }
 
 /*

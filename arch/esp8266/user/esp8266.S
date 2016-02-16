@@ -606,6 +606,7 @@
 
 /* DOCOL - the interpreter! */
 	.section .irom0.text
+	.literal ADDR_TO_DOCOL, DOCOL
 	.align 4
 
 DOCOL:
@@ -891,8 +892,8 @@ L1:	NEXT
 	NEXT
 
 	defcode "-",1,,SUB		// tos_x  <--  tos_y - tos_x
-	POPDATASTACK a8
-	READTOSX a9
+	POPDATASTACK a9
+	READTOSX a8
 	sub a8, a8, a9
 	WRITETOSX a8
 	NEXT
@@ -1294,6 +1295,16 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	PUSHDATASTACK a8
 	NEXT
 
+	defcode "DATA-SEGMENT-START",18,,DS0
+	READ_VAR a8, system_t_data_segment
+	PUSHDATASTACK a8
+	NEXT
+
+	defcode "DATA-SEGMENT-SIZE",17,,DS_SIZE
+	READ_VAR a8, system_t_data_segment_size
+	PUSHDATASTACK a8
+	NEXT
+
 	defcode "LATEST",6,,LATEST
 	addi a8, a12, system_t_latest
 	PUSHDATASTACK a8
@@ -1337,7 +1348,7 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	.endm
 
 	defcode "DOCOL",5,,__DOCOL
-	l32r a8, DOCOL
+	l32r a8, ADDR_TO_DOCOL
 	PUSHDATASTACK a8
 	NEXT
 
@@ -1791,6 +1802,13 @@ _NUMBER_ERROR:
 	defcode "PRINTHEX",8,,PRINTHEX
 	POPDATASTACK a2
 	C_CALL forthright_printHex0
+	NEXT
+
+	defcode "PRINT-DICTIONARY",16,,PRINTDICT
+	READ_VAR a2, system_t_dp
+	READ_VAR a3, system_t_latest
+	l32r a4, ADDR_TO_DOCOL
+	C_CALL forthright_printDictionary
 	NEXT
 
 	defcode "PRINTNL",7,,PRINTNL
@@ -2625,7 +2643,7 @@ L41:
 	NEXT
 
 
-	defcode "INIT-DONE",17,,INITIALIZEDONE
+	defcode "INIT-DONE",9,,INITIALIZEDONE
 	movi a8, 0
 	WRITE_VAR a8, system_t_initializing		// clear initializing flag
 	NEXT
@@ -2636,6 +2654,9 @@ L41:
 	l32i a8, a8, 0		// Load the address from memory
 	jx a8			// Jump to that address
 				// After xt runs its NEXT will continue executing the current word.
+	ill
+	ill
+	ill
 
 /*	The following declaration makes it possible to get hold of the entry point into
 	the dictionary, and set that to the LATEST variable in system_d
