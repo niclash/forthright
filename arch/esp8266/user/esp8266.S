@@ -831,19 +831,15 @@ code_\label :			// assembler code follows
 	NEXT
 
 	defcode "2DUP",4,,TWODUP	// duplicate top two elements of stack
-					// tos_x  <--  tos_y
-					// tos_y  <--  tos_x
+	READTOSY a9
 	READTOSX a8
-	READTOSX a9
-	PUSHDATASTACK a9
-	PUSHDATASTACK a8
+	PUSHDATASTACK a9		// push TOS-Y
+	PUSHDATASTACK a8		// push TOS-X
 	NEXT
 
 	defcode "2SWAP",5,,TWOSWAP	// swap top two pairs of elements of stack
-					// tos_x  <--  tos_z
-					// tos_y  <--  tos_t
-					// tos_z  <--  tos_x
-					// tos_t  <--  tos_y
+					// tos_x  <-->  tos_z
+					// tos_y  <-->  tos_t
 	READTOSX a8
 	READTOSY a9
 	READTOSZ a10
@@ -966,138 +962,138 @@ L1:	NEXT
 	Anyway, -1 meaning TRUE and 0 meaning FALSE.
 */
 
-	defcode "=",1,,EQU	// top two words are equal?
+	defcode "=",1,,EQU		// top two words are equal?
 	POPDATASTACK a8
 	READTOSX a9
-        movi a10,0		// Set a10 to FALSE
-	bne a8, a9, L2		// If Not Equal, branch
-	movi a10, -1		// Set a10 to TRUE
+        movi a10,0			// Set a10 to FALSE
+	bne a8, a9, L2			// If Not Equal, branch
+	movi a10, -1			// Set a10 to TRUE
 L2:	WRITETOSX a10
 	NEXT
 
-	defcode "<>",2,,NEQU	// top two words are not equal?
+	defcode "<>",2,,NEQU		// top two words are not equal?
 	POPDATASTACK a8
 	READTOSX a9
-	movi a10,0		// Set a10 to FALSE
-	beq a8,a9, L3		// If Equal, branch
-	movi a10, -1		// Set a10 to TRUE
+	movi a10,0			// Set a10 to FALSE
+	beq a8,a9, L3			// If Equal, branch
+	movi a10, -1			// Set a10 to TRUE
 L3:	WRITETOSX a10
 	NEXT
 
 	defcode "<",1,,LT
 	POPDATASTACK a8
 	READTOSX a9
-	movi a10, 0		// Set a10 to FALSE
-	bge a9, a8, L4		// If a9 >= a8, branch
-	movi a10, -1		// Set a10 to TRUE
+	movi a10, 0			// Set a10 to FALSE
+	bge a9, a8, L4			// If a9 >= a8, branch
+	movi a10, -1			// Set a10 to TRUE
 L4:	WRITETOSX a10
 	NEXT
 
 	defcode ">",1,,GT
 	POPDATASTACK a8
 	READTOSX a9
-	movi a10, 0		// Set a10 to FALSE
-	bge a8, a9, L5		// If a8 >= a9, branch
-	movi a10, -1		// Set a10 to TRUE
+	movi a10, 0			// Set a10 to FALSE
+	bge a8, a9, L5			// If a8 >= a9, branch
+	movi a10, -1			// Set a10 to TRUE
 L5:	WRITETOSX a10
 	NEXT
 
-	defcode "<=",2,,LE	// ( a b <= ) is equivalen to  ( b a < NOT )
-	POPDATASTACK a8		// ( b )
-	READTOSX a9		// ( a )
-	movi a10, 0		// Set a10 to FALSE (the NOT state)
-	blt a8, a9, L6		// If b < a, branch
-	movi a10, -1		// Set a10 to TRUE
+	defcode "<=",2,,LE		// ( a b <= ) is equivalen to  ( b a < NOT )
+	POPDATASTACK a8			// ( b )
+	READTOSX a9			// ( a )
+	movi a10, 0			// Set a10 to FALSE (the NOT state)
+	blt a8, a9, L6			// If b < a, branch
+	movi a10, -1			// Set a10 to TRUE
 L6:	WRITETOSX a10
 	NEXT
 
 	defcode ">=",2,,GE
 	POPDATASTACK a8
 	READTOSX a9
-	movi a10, 0		// Set a10 to FALSE
-	blt a9, a8, L7		// If a9 < a8 , branch
-	movi a10, -1		// Set a10 to TRUE
+	movi a10, 0			// Set a10 to FALSE
+	blt a9, a8, L7			// If a9 < a8 , branch
+	movi a10, -1			// Set a10 to TRUE
 L7:	WRITETOSX a10
 	NEXT
 
-	defcode "0=",2,,ZEQU	// top of stack equals 0?
+	defcode "0=",2,,ZEQU		// top of stack equals 0?
 	READTOSX a8
-	movi a9, -1		// Set result to TRUE
-	beqz a8, L8		// Test if TOS was 0, jump if so,
-	movi a9, 0		// Set result to FALSE
+	movi a9, -1			// Set result to TRUE
+	beqz a8, L8			// Test if TOS was 0, jump if so,
+	movi a9, 0			// Set result to FALSE
 L8:	WRITETOSX a9
 	NEXT
 
-	defcode "0<>",3,,ZNEQU	// top of stack not 0?
+	defcode "0<>",3,,ZNEQU		// top of stack not 0?
 	READTOSX a8
-	movi a9, -1		// Set result to TRUE
-	bnez a8, L9		// Test if TOS was NOT 0, jump if so,
-	movi a9, 0		// Set result to FALSE
+	movi a9, -1			// Set result to TRUE
+	bnez a8, L9			// Test if TOS was NOT 0, jump if so,
+	movi a9, 0			// Set result to FALSE
 L9:	WRITETOSX a9
 	NEXT
 
-	defcode "0<",2,,ZLT	// comparisons with 0
+	defcode "0<",2,,ZLT		// comparisons with 0
 	READTOSX a8
-	movi a9, 0		// Set result to FALSE
-	bge a8, a9, L10		// Test if TOS >= 0, jump if so,
-	movi a9, -1		// Set result to TRUE
+	movi a9, 0			// Set result to FALSE
+	bge a8, a9, L10			// Test if TOS >= 0, jump if so,
+	movi a9, -1			// Set result to TRUE
 L10:	WRITETOSX a9
 	NEXT
 
 	defcode "0>",2,,ZGT
 	READTOSX a8
-	movi a9, 0		// Set result to FALSE
-	bge a9, a8, L11		// Test if 0 >= TOS, jump if so,
-	movi a9, -1		// Set result to TRUE
+	movi a9, 0			// Set result to FALSE
+	bge a9, a8, L11			// Test if 0 >= TOS, jump if so,
+	movi a9, -1			// Set result to TRUE
 L11:	WRITETOSX a9
 	NEXT
 
 	defcode "0<=",3,,ZLE
 	READTOSX a8
-	movi a9, 0		// Set result to FALSE
-	blt a9, a8, L12		// Test if 0 < TOS, jump if so,
-	movi a9, -1		// Set result to TRUE
+	movi a9, 0			// Set result to FALSE
+	blt a9, a8, L12			// Test if 0 < TOS, jump if so,
+	movi a9, -1			// Set result to TRUE
 L12:	WRITETOSX a9
 	NEXT
 
 	defcode "0>=",3,,ZGE
 	READTOSX a8
-	movi a9, 0		// Set result to FALSE
-	blt a8, a9, L13		// Test if TOS < 0, jump if so,
-	movi a9, -1		// Set result to TRUE
+	movi a9, 0			// Set result to FALSE
+	blt a8, a9, L13			// Test if TOS < 0, jump if so,
+	movi a9, -1			// Set result to TRUE
 L13:	WRITETOSX a9
 	NEXT
 
-	defcode "AND",3,,AND	// bitwise AND
+	defcode "AND",3,,AND		// bitwise AND
 	POPDATASTACK a8
 	READTOSX a9
-	and a8, a8, a9		// And
+	and a8, a8, a9			// And
 	WRITETOSX a8
 	NEXT
 
-	defcode "OR",2,,OR	// bitwise OR
+	defcode "OR",2,,OR		// bitwise OR
 	POPDATASTACK a8
 	READTOSX a9
-	or a8, a8, a9		// Or
+	or a8, a8, a9			// Or
 	WRITETOSX a8
 	NEXT
 
-	defcode "XOR",3,,XOR	// bitwise XOR
+	defcode "XOR",3,,XOR		// bitwise XOR
 	POPDATASTACK a8
 	READTOSX a9
-	xor a8, a8, a9		// Xor
+	xor a8, a8, a9			// Xor
 	WRITETOSX a8
 	NEXT
 
-	defcode "INVERT",6,,INVERT // this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
+	defcode "INVERT",6,,INVERT	// this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
 	READTOSX a8
-	movi a9, 0		// load a9 with zero
-	addi a9, a9, -1		// a9 is now all zero
-	xor a8, a8, a9		// Negate all bits
+	movi a9, 0			// load a9 with zero
+	addi a9, a9, -1			// a9 is now all zero
+	xor a8, a8, a9			// Negate all bits
 	WRITETOSX a8
 	NEXT
 
-	defcode "SHIFTL",3,,SHIFTL	// shift bits left
+	defcode "LSHIFT",6,,SHIFTL	// shift bits left
 	POPDATASTACK a8			// number of bits to shift
 	READTOSX a9			// read value
 	ssl a8				// set shift amount register
@@ -1105,7 +1101,7 @@ L13:	WRITETOSX a9
 	WRITETOSX a8			// write the shifted value to top of stack
 	NEXT
 
-	defcode "SHIFTR",3,,SHIFTR	// shift bits right (logically, i.e. fills MSBs with zeroes)
+	defcode "RSHIFT",6,,SHIFTR	// shift bits right (logically, i.e. fills MSBs with zeroes)
 	POPDATASTACK a8			// number of bits to shift
 	READTOSX a9			// read value
 	ssr a8				// set shift amount register
@@ -1113,7 +1109,7 @@ L13:	WRITETOSX a9
 	WRITETOSX a8			// write the shifted value to top of stack
 	NEXT
 
-	defcode "SHIFTRA",3,,SHIFTRA	// shift bits left (arithmetically, i.e. divide by 2)
+	defcode "RSHIFT_A",8,,SHIFTRA	// shift bits left (arithmetically, i.e. divide by 2)
 	POPDATASTACK a8			// number of bits to shift
 	READTOSX a9			// read value
 	ssr a8				// set shift amount register
