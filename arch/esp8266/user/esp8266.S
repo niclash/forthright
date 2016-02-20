@@ -1403,71 +1403,6 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	addi a13, a13, 4		// pop return stack and throw away
 	NEXT
 
-/* Debugging routines... Print Data Stack and Print Return Stack */
-
-printDS:
-	PUSHRSP a2
-	PUSHRSP a8
-	PUSHRSP a9
-
-	READ_VAR a9, system_t_data_stack
-	READ_VAR a8, system_t_data_stack_size
-	add a9, a9, a8			// a9 contains Top of Data Stack
-	sub a8, a9, a15			// a8 = length of data stack
-
-	PUSHRSP a9
-	mov a2, a8
-	C_CALL forthright_printHex1	// print value
-	POPRSP a9
-
-printDS_Loop:
-	beqz a8, printDS_End		// stop loop if stack is empty
-	addi a9, a9, -4			// move to next element
-	l32i a2, a9, 0			// read value on stack
-	PUSHRSP a9
-	C_CALL forthright_printHex1	// print value
-	POPRSP a9
-	addi a8, a8, -4			// decrement count
-	j printDS_Loop
-
-printDS_End:
-	C_CALL forthright_printNL1
-	POPRSP a9
-	POPRSP a8
-	POPRSP a2
-	ret
-
-printRS:
-	PUSHDATASTACK a2
-	PUSHDATASTACK a8
-	PUSHDATASTACK a9
-
-	READ_VAR a9, system_t_return_stack
-	READ_VAR a8, system_t_return_stack_size
-	add a9, a9, a8			// a9 contains Top of Return Stack
-	sub a8, a9, a13			// a8 = length of return stack
-
-	PUSHDATASTACK a9
-	mov a2, a8
-	C_CALL forthright_printHex1	// print value
-	POPDATASTACK a9
-
-printRS_Loop:
-	beqz a8, printRS_End		// stop loop if stack is empty
-	addi a9, a9, -4			// move to next element
-	l32i a2, a9, 0			// read value on stack
-	PUSHDATASTACK a9
-	C_CALL forthright_printHex1	// print value
-	POPDATASTACK a9
-	addi a8, a8, -4			// decrement count
-	j printRS_Loop
-
-printRS_End:
-	C_CALL forthright_printNL1
-	POPDATASTACK a9
-	POPDATASTACK a8
-	POPDATASTACK a2
-	ret
 /*
 	PARAMETER (DATA) STACK ----------------------------------------------------------------------
 
@@ -1916,8 +1851,8 @@ L28:	// Not found.
 _TCFA:
 	addi a2, a2, 4		// point a2 to length+flags byte
 	l8ui a8, a2, 0		// Read length+flags
-	movi a9, F_LENMASK	// trickery to use F_HIDDEN included in length.
-	and a8, a8, a9		// mask length
+	movi a9, F_LENMASK
+	and a8, a8, a9		// mask length and drop F_IMMEDIATE and F_HIDDEN flags
 	add a2, a2, a8		// move beyond the word
 	addi a2, a2, 4		// add 1 for the length byte, then pad with 3 bytes to prepare for alignment
 	movi a8, ~3		// mask last two bits for 4-byte alignment
@@ -2216,22 +2151,22 @@ _COMMA:
 */
 
 	defword ":",1,,COLON
-	.int WORD		// Get the name of the new word
-	.int HEADER_COMMA	// Create the dictionary entry / header
-	.int LIT, DOCOL, COMMA	// Append DOCOL  (the codeword).
-	.int LATEST, FETCH, HIDDEN // Make the word hidden (see below for definition).
-	.int RBRAC		// Go into compile mode.
-	.int EXIT		// Return from the function.
+	.int WORD			// Get the name of the new word
+	.int HEADER_COMMA		// Create the dictionary entry / header
+	.int LIT, DOCOL, COMMA		// Append DOCOL  (the codeword).
+	.int LATEST, FETCH, HIDDEN	// Make the word hidden (see below for definition).
+	.int RBRAC			// Go into compile mode.
+	.int EXIT			// Return from the function.
 
 /*
 	; (SEMICOLON) is also elegantly simple.  Notice the F_IMMED flag.
 */
 
 	defword ";",1,F_IMMED,SEMICOLON
-	.int LIT, EXIT, COMMA	// Append EXIT (so the word will return).
-	.int LATEST, FETCH, HIDDEN // Toggle hidden flag -- unhide the word (see below for definition).
-	.int LBRAC		// Go back to IMMEDIATE mode.
-	.int EXIT		// Return from the function.
+	.int LIT, EXIT, COMMA		// Append EXIT (so the word will return).
+	.int LATEST, FETCH, HIDDEN	// Toggle hidden flag -- unhide the word (see below for definition).
+	.int LBRAC			// Go back to IMMEDIATE mode.
+	.int EXIT			// Return from the function.
 
 /*
 	EXTENDING THE COMPILER ----------------------------------------------------------------------
@@ -2292,11 +2227,11 @@ _COMMA:
 */
 
 	defcode "HIDDEN",6,,HIDDEN
-	POPDATASTACK a10		// typically LATEST word.
+	POPDATASTACK a10		// pop address to word, e.g. latest word in "HEADER,"
 	l8ui a8, a10, 4			// load the name/flags byte.
-	movi a9, F_IMMED
-	xor a8, a8, a9			// Toggle the IMMED bit.
-	s8i a8, a10, 4			// Update the F_IMMED flag in the LATEST word
+	movi a9, F_HIDDEN
+	xor a8, a8, a9			// Toggle the HIDDEN bit.
+	s8i a8, a10, 4			// Update the F_HIDDEN flag in the LATEST word
 	NEXT
 
 	defword "HIDE",4,,HIDE
