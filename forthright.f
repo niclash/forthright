@@ -321,8 +321,8 @@
 	Very useful for debugging.
 )
 : .S		( -- )
-	DSP@		( get current stack pointer )
-	0 S0 @ + 4-	( pointer to the stack element )
+	DSP@			( get current stack pointer )
+	S0 @ 4-			( pointer to the first/bottom stack element )
 	BEGIN
 		OVER OVER <=	( compare to current stack pointer )
 	WHILE
@@ -1617,8 +1617,6 @@ LEAVE-SP LEAVE-SP !
 ;
 
 PRINT-DICTIONARY
-
-HERE DATA-SEGMENT-START - PRINTHEX
 
 WELCOME
 

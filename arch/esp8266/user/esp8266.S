@@ -1002,12 +1002,11 @@ L4:	WRITETOSX a10
 L5:	WRITETOSX a10
 	NEXT
 
-	defcode "<=",2,,LE
-	POPDATASTACK a8
-	READTOSX a9
-	addi a15,a15,4		// Remove one entry from stack
-	movi a10, 0		// Set a10 to FALSE
-	blt a8, a9, L6		// If a8 < a9, branch
+	defcode "<=",2,,LE	// ( a b <= ) is equivalen to  ( b a < NOT )
+	POPDATASTACK a8		// ( b )
+	READTOSX a9		// ( a )
+	movi a10, 0		// Set a10 to FALSE (the NOT state)
+	blt a8, a9, L6		// If b < a, branch
 	movi a10, -1		// Set a10 to TRUE
 L6:	WRITETOSX a10
 	NEXT
