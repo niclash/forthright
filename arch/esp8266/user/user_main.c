@@ -22,6 +22,7 @@ void user_init(void)
     uart_init_new();
     UART_SetPrintPort( debugPort );
     xTaskCreate( forthright_task, "forthright", 256, NULL, 2, &tasks[0] ); // create root FORTH interpreter
+
 }
 
 static int putCharsToSerial( int port, char* str, int length )
@@ -266,6 +267,6 @@ int forthright_divide( int a, int b )
 
 int forthright_modulo( int a, int b )
 {
-    return a / b;
+    return a % b;
 }
 

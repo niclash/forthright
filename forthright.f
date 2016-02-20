@@ -300,7 +300,7 @@
 
 ( This is the underlying recursive definition of U. )
 : U.		( u -- )
-	BASE @ U/MOD	( width rem quot )
+	BASE @ U/MOD		( width rem quot )
 	?DUP IF			( if quotient <> 0 then )
 		RECURSE		( print the quotient )
 	THEN
@@ -393,9 +393,9 @@
 ( Finally we can define word . in terms of .R, with a trailing space. )
 : . 0 .R SPACE ;
 
-( The real U., note the trailing space.
-: U. U. SPACE ;
-)
+( The real U., note the trailing space. )
+\ : U. U. SPACE ;
+
 
 ( ? fetches the integer at an address and prints it. )
 : ? ( addr -- ) @ . ;
@@ -1622,6 +1622,7 @@ HERE DATA-SEGMENT-START - PRINTHEX
 
 WELCOME
 
+HIDE WELCOME
+
 INIT-DONE
 
-HIDE WELCOME

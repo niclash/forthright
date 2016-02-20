@@ -907,35 +907,51 @@ L1:	NEXT
 
 /*
 	In this FORTH, /, MOD and /MOD are primitives. U/MOD from JonesForth is not present.
+
 	However, the ESP8266 is lacking division hardware, so a library needs to be called. And
 	I can't find any documentation on how to call that from assembler, so a thin call to
 	C is done to access that library.
-*/
-	defcode "/MOD",5,,DIVMOD	// This word is relatiely slow, but only used when
+
+	The ROM routine should be called like this, but 100/3 gives 3... so forthright.f has been changed.
+
+	defcode "U/MOD",5,,UDIVMOD	// This word is relatiely slow, but only used when
 					// converting numbers to text.
-	POPDATASTACK a2			// pop divisor
-	POPDATASTACK a3			// pop dividend
-	PUSHDATASTACK a3		// push divisor
-	PUSHDATASTACK a2		// push dividend
+	READTOSX a2			// read denominator
+	READTOSY a3			// read numerator
+	C_CALL __umodsi3		// compute remainder
+	mov a8, a2			// remainder to a8
+	POPDATASTACK a2			// pop denominator
+	POPDATASTACK a3			// pop numerator
+	C_CALL __udivdi3		// compute quotient
+	PUSHDATASTACK a8		// push remainder
+	PUSHDATASTACK a2		// push quotient
+	NEXT
+
+*/
+
+	defcode "U/MOD",5,,UDIVMOD	// This word is relatiely slow, but only used when
+					// converting numbers to text.
+	READTOSX a3			// read denominator
+	READTOSY a2			// read numerator
 	C_CALL forthright_modulo
 	mov a8, a2			// save remainder
-	POPDATASTACK a2			// pop divisor
-	POPDATASTACK a3			// pop dividend
-	PUSHDATASTACK a8		// push remainder (one of the results)
+	POPDATASTACK a3			// pop denominator
+	POPDATASTACK a2			// pop numerator
 	C_CALL forthright_divide
+	PUSHDATASTACK a8		// push remainder (one of the results)
 	PUSHDATASTACK a2		// push quotient  (the other result)
 	NEXT
 
 	defcode "/",1,,DIV		// This word is relatively slow
-	POPDATASTACK a3			// pop divisor
-	POPDATASTACK a2			// pop dividend
+	POPDATASTACK a3			// pop denominator
+	POPDATASTACK a2			// pop numerator
 	C_CALL forthright_divide
 	PUSHDATASTACK a2		// push quotient
 	NEXT
 
 	defcode "MOD",3,,MOD		// This word is relatively slow
-	POPDATASTACK a3			// pop divisor
-	POPDATASTACK a2			// pop dividend
+	POPDATASTACK a3			// pop denominator
+	POPDATASTACK a2			// pop numerator
 	C_CALL forthright_modulo
 	PUSHDATASTACK a2		// push remainder
 	NEXT
