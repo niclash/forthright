@@ -394,7 +394,7 @@
 : . 0 .R SPACE ;
 
 ( The real U., note the trailing space. )
-\ : U. U. SPACE ;
+: U. U. SPACE ;
 
 
 ( ? fetches the integer at an address and prints it. )
