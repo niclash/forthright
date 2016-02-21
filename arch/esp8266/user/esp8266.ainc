@@ -30,6 +30,8 @@
 		void* currkey			// offset 68
 		void* bufftop			// offset 72
 		int interpret_is_lit		// offset 76
+		int initializing		// offset 80
+		int iecho			// offset 84
 	} system_t;
 
 	and on the ESP8266 C-compiler the address of that is passed to the entry point in the
@@ -61,6 +63,7 @@
 	.equ	system_t_bufftop,72
 	.equ	system_t_interpret_is_lit,76
 	.equ	system_t_initializing,80
+	.equ	system_t_echo,84
 
 	.macro READ_VAR reg, member
 	l32i \reg, a12, \member

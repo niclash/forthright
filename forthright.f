@@ -1584,10 +1584,7 @@ LEAVE-SP LEAVE-SP !
 : BYE		( -- )
 ;
 
-(
-	UNUSED returns the number of cells remaining in the user memory (data segment).
-)
-
+( UNUSED returns the number of cells remaining in the user memory (data segment). )
 : UNUSED	( -- n )
 	DATA-SEGMENT-SIZE
 	HERE		( get current position in data segment )
@@ -1598,9 +1595,14 @@ LEAVE-SP LEAVE-SP !
 ;
 
 : WELCOME
-	UNUSED PRINTHEX ." CELLS REMAINING" CR
-	." OK "
+	CR
+	."       Forthright ver 1.0" CR
+	." Copyright 2016, Niclas Hedhman" CR
+	."      All rights reserved." CR CR
+	UNUSED . ." CELLS REMAINING" CR
+	." <ok>" CR
 ;
 WELCOME
 INIT-DONE
+TRUE ECHO
 

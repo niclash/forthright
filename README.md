@@ -23,7 +23,7 @@ will be required to be defined at Assembler level, or perhaps even in Makefile c
 
 
 ## Future CPUs
-Other processors will be considered in the future if this one is successful.
+Other processors will be considered (or maybe not) in the future if this one is successful.
 
 Obvious candidates are;
 

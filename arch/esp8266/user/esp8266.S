@@ -564,24 +564,12 @@
 
 	.section .irom0.text
 
-	.align 4
-	.literal TEXT_ADDR_welcome, TEXT_welcome
-
 	.section .rodata
 	.literal_position
-
-	TEXT_welcome:	.ascii "\n    Forthright ver "
-			.byte 48 + FORTHRIGHT_VERSION_MAJOR
-			.ascii "."
-			.byte 48 + FORTHRIGHT_VERSION_MINOR
-			.ascii "\n\nCopyright 2016, Niclas Hedhman\n\n"
-			.ascii "     All rights reserved.\n\n"
 
 	S_TEXT errmsg1, "Error at: "
 	S_TEXT NL "\n"
 	S_TEXT OUT_OF_MEMORY, "Error: Data segment is full!"
-
-        .equ TEXT_SIZE_welcome, (TEXT_errmsg1-TEXT_welcome)
 
 	.section .irom0.text
 
@@ -1421,6 +1409,10 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	l32i a15, a15, 0	// pop top of data stack to data stack pointer
 	NEXT
 
+/* GPIO Support
+
+ */
+
 /*
 	INPUT AND OUTPUT ----------------------------------------------------------------------
 
@@ -1471,9 +1463,12 @@ _KEY:
 	addi a9, a9, 1				// increment currkey
 	WRITE_VAR a9, system_t_currkey		// save currkey
 
+	READ_VAR a9, system_t_echo		// check if echo
+	beqz a9, L15_4
 	mov a2, a8
 	C_CALL forthright_echo_char		// echo character
 
+L15_4:
 	mov a2, a8				// return value
 	ret
 
@@ -2334,6 +2329,11 @@ _COMMA:
 	// TODO (niclas); putChars() returns a negative number if there was an error. What to do?
 	NEXT
 
+	defcode "ECHO",4,,ECHO
+	POPDATASTACK a2
+	WRITE_VAR a2, system_t_echo
+	NEXT
+
 /*
 	COMBINING DATA AND BEHAVIOR --------------------------------------------------------
 
@@ -2668,13 +2668,16 @@ forthright_start:
 	movi a8, 10
 	WRITE_VAR a8, system_t_base		// set BASE to 10
 
+	movi a8, 0
+	WRITE_VAR a8, system_t_echo		// disable echo from start.
+						// Will be enabled at end of parsing default Forth code.
+
 	movi a8, -1
 	WRITE_VAR a8, system_t_initializing	// set initializing flag
 
 	l32r a8, LAST_WORD_IN_DICTIONARY	//
-	WRITE_VAR a8, system_t_latest		// set BASE to 10
+	WRITE_VAR a8, system_t_latest		// set LATEST position
 
-	PRINTS welcome
 	l32r a14, .COLDSTART			// initialise interpreter.
 	NEXT					// run interpreter!
 

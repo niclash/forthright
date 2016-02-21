@@ -47,6 +47,7 @@ typedef struct
     void* bufftop;			// offset 72
     int interpret_is_lit;		// offset 76
     int initializing;			// offset 80
+    int echo;				// offset 84
 
 } system_t;
 
