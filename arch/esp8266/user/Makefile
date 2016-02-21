@@ -24,7 +24,7 @@ endif
 #   makefile at its root level - these are then overridden
 #   for a subtree within the makefile rooted therein
 #
-DEFINES +=
+DEFINES += -DFORTH_TCP_PORT=7876
 
 #############################################################
 # Recursion Magic - Don't touch this!!

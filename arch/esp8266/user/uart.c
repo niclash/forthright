@@ -35,7 +35,7 @@ LOCAL int tx_fifo_count(int uart)
 int uart_tx_one_char(uint8 uart, uint8 ch)
 {
     if( ch == '\n') {
-        uart_tx_one_char(UART1, '\r');
+        uart_tx_one_char(uart, '\r');
     } else {
         while(tx_fifo_count(uart) >= 126 )
         {
@@ -233,11 +233,7 @@ int rx_fifo_count()
 
 int uart_read_chars( char* buffer, int bufsize )
 {
-    int fifo_len;
-    while( (fifo_len = rx_fifo_count()) == 0 )
-    {
-        os_delay_us( 100 );
-    }
+    int fifo_len = rx_fifo_count();
     int count = 0;
     while( count < bufsize && count < fifo_len )
     {

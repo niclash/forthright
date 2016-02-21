@@ -29,7 +29,7 @@ endif
 DEFINES +=-DDATA_SEGMENT_SIZE=8192 \
            -DDATA_STACK_SIZE=512 \
            -DRETURN_STACK_SIZE=512 \
-           -DINPUT_BUFFER_SIZE=64
+           -DINPUT_BUFFER_SIZE=64 \
 
 
 #############################################################

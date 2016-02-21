@@ -1472,7 +1472,7 @@ _KEY:
 	WRITE_VAR a9, system_t_currkey		// save currkey
 
 	mov a2, a8
-	C_CALL uart0_write_char			// echo character
+	C_CALL forthright_echo_char		// echo character
 
 	mov a2, a8				// return value
 	ret
@@ -1735,31 +1735,6 @@ _NUMBER_ERROR:
 
 	(FIND) doesn't find dictionary entries which are flagged as HIDDEN.  See below for why.
 */
-
-/* Is used sometimes for debugging. Will be removed later
-*/
-	defcode "PRINTWORD",9,,PRINTWORD
-	READTOSX a2
-	C_CALL forthright_printHex0
-	POPDATASTACK a2
-	C_CALL forthright_printWord0
-	NEXT
-
-	defcode "PRINTHEX",8,,PRINTHEX
-	POPDATASTACK a2
-	C_CALL forthright_printHex0
-	NEXT
-
-	defcode "PRINT-DICTIONARY",16,,PRINTDICT
-	READ_VAR a2, system_t_dp
-	READ_VAR a3, system_t_latest
-	l32r a4, ADDR_TO_DOCOL
-	C_CALL forthright_printDictionary
-	NEXT
-
-	defcode "PRINTNL",7,,PRINTNL
-	C_CALL forthright_printNL0
-	NEXT
 
 	defcode "(FIND)",6,,PAREN_FIND
 	POPDATASTACK a3				// a3 = length

@@ -1,4 +1,13 @@
 
+
+
+#ifndef __FORTHRIGHT_H__
+#define __FORTHRIGHT_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //   FSTATE          Is the interpreter executing code (0) or compiling a word (non-zero)?
 //   LATEST          Points to the latest (most recently defined) word in the dictionary.
 //   DP              Points to the next free byte of memory.  When compiling, compiled words go here.
@@ -41,13 +50,13 @@ typedef struct
 
 } system_t;
 
-extern void forthright();
+void forthright();
 
-extern int forthright_divide( int a, int b );
+int forthright_divide( int a, int b );
 
-extern int forthright_modulo( int a, int b );
+int forthright_modulo( int a, int b );
 
-extern void forthright_start( system_t* );
+void forthright_start( system_t* );
 // Testing reading chars before implementing serial port.
 
 /* Reads characters from the primary serial port to the Forth Input Buffer.
@@ -60,18 +69,25 @@ extern void forthright_start( system_t* );
 
    The method returns the number of characters that was written into the 'buffer'.
 */
-extern int forthright_readChars( char* buffer, int bufsize );
+int forthright_readChars( char* buffer, int bufsize );
 
-/* Read characters into the buffer, maximum bufsize characters.
- *
- * Returns the number of characters actually read.
+
+/* Echo character is used to send validation back to the source.
+ * For serial port, this will be sent on the serial port, but for TCP connection,
+ * we will not echo back.
+ */
+void forthright_echo_char( char ch );
+
+/*
+ * Read characters into the buffer, maximum bufsize characters.
  */
 
-extern int forthright_putChar( char ch );
+void forthright_putChar( char ch );
 
-/* Outputs the characters in str argument. The character array MUST be a null terminated.
+/*
+ * Outputs the characters in str argument.
  */
-extern int forthright_putChars( char* str, int length );
+void forthright_putChars( char* str, int length );
 
 /* This method will send the characters received to the
    secondary serial port, used for debugging Forthright itself.
@@ -83,15 +99,10 @@ extern int forthright_putChars( char* str, int length );
    If the port is given more characters than it can handle, it will start discarding output. It will
    NOT block.
 */
-extern void forthright_debugOut( char* str, int length  );
+void forthright_debugOut( char* str, int length  );
 
-extern int forthright_printHex( int value );
+#ifdef __cplusplus
+}
+#endif
 
-extern void forthright_printWord( void* pointer );
-
-extern void forthright_printNL();
-extern void forthright_print0();
-extern void forthright_print1();
-extern void forthright_print2();
-extern void forthright_print3();
-extern void forthright_print4();
+#endif

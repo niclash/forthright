@@ -661,7 +661,7 @@
 	the behavior pointer, namely the @, which fetches the 10 from the pointer on the stack.
 
 	CREATE creates a dictionary header, compiles DODOES and a zero behavior pointer without
-	allocation more data memory. DOES> pointes the behavior pointer to the behavior words, return
+	allocation more data memory. DOES> points the behavior pointer to the behavior words, return
 	to its caller without executing the behavior words behind it.
 
 )
@@ -1597,30 +1597,10 @@ LEAVE-SP LEAVE-SP !
 	4 /		( returns number of cells )
 ;
 
-(
-	NOTES ----------------------------------------------------------------------
-
-	DOES> isn't possible to implement with this FORTH because we don't have a separate
-	data pointer.
-)
-
-(
-	WELCOME MESSAGE ----------------------------------------------------------------------
-
-	Print the version and OK prompt.
-)
-
-
 : WELCOME
 	UNUSED PRINTHEX ." CELLS REMAINING" CR
 	." OK "
 ;
-
-PRINT-DICTIONARY
-
 WELCOME
-
-HIDE WELCOME
-
 INIT-DONE
 

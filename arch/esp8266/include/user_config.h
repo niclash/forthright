@@ -25,7 +25,7 @@
 #ifndef __USER_CONFIG_H__
 #define __USER_CONFIG_H__
 
-#include "../../common/forthright.h"
+#include "forthright.h"
 
 #endif
 
