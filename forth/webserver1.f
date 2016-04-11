@@ -83,13 +83,13 @@ A Web Server, Step by Step
   protocol and states.
 )
 
-VARIABLE url       \ stores the URL (string)
-VARIABLE posted    \ stores arguments of POST (string)
-VARIABLE url-args  \ stores arguments in the URL (string)
-VARIABLE protocol  \ stores the protocol (string)
-VARIABLE data      \ true, when data is returned
-VARIABLE active    \ true for POST
-VARIABLE command?  \ true in the request line
+variable url       \ stores the URL (string)
+variable posted    \ stores arguments of POST (string)
+variable url-args  \ stores arguments in the URL (string)
+variable protocol  \ stores the protocol (string)
+variable data      \ true, when data is returned
+variable active    \ true for POST
+variable command?  \ true in the request line
 
 ( A request consist of two parts, the request line and the header. Spaces are separators. The first
   word in a line is a ``token'' indicating the protocol, the rest of the line, or one/two words are
@@ -121,8 +121,8 @@ wordlist constant commands
         url $@ drop I + c@ dup '% = IF
             drop 0. url $@ I 1+ /string
             2 min dup >r >number r> swap - >r 2drop
-        ELSE  0 >r  THEN  over url $@ drop + c!  1+
-    r> 1+ +LOOP  url $!len
+        else  0 >r  then  over url $@ drop + c!  1+
+    r> 1+ +loop  url $!len
     r> base !
 ;
 
@@ -159,7 +159,7 @@ commands set-current
 
 (
   And now for the header values. Since we need a string variable for each value, and otherwise want
-  only to store the string, we build that with CREATE-DOES>. Again: we need a variable and a word,
+  only to store the string, we build that with CREATE-does>. Again: we need a variable and a word,
   which stores the rest of the line there. In two different vocabularies. The latter with a colon
   behind.
 
@@ -167,9 +167,9 @@ commands set-current
   string we need and call VARIABLE and CREATE afterwards.
 )
 : value:  ( -- )  name
-    definitions 2dup 1- nextname VARIABLE
-    values set-current nextname here cell - Create ,
-    definitions  DOES> @ get-rest
+    definitions 2dup 1- nextname variable
+    values set-current nextname here cell - create ,
+    definitions  does> @ get-rest
 ;
 
 ( And now we set to work and define all the necessary variables: )
@@ -202,15 +202,15 @@ Parsing a Request
   word. We must therefore read line by line with refill, remove CRs from the line end, and then
   check if the line was empty.
 
-VARIABLE maxnum
+variable maxnum
 
 : ?cr ( -- )
-    #tib @ 1 >= IF  source 1- + c@ #cr = #tib +!  THEN
+    #tib @ 1 >= if  source 1- + c@ #cr = #tib +!  then
 ;
 
 : refill-loop ( -- flag )
-    BEGIN  refill ?cr  WHILE  interpret  >in @ 0=  UNTIL
-    true  ELSE  maxnum off false  THEN
+    begin  refill ?cr  while  interpret  >in @ 0=  until
+    true  else  maxnum off false  then
 ;
 
 (
@@ -227,9 +227,9 @@ VARIABLE maxnum
 \ Waiiiit! The request isn't complete yet. The method POST, which was added as bonus, expects
 \ the data now. The length fortunately is stored as base 10 number in the field ``Content-Length:''.
 
-    active @ IF  s" " posted $! Content-Length $@ snumber? drop
+    active @ if  s" " posted $! Content-Length $@ snumber? drop
         posted $!len  posted $@ infile-id read-file throw drop
-    THEN  only forth also  pop-file
+    then  only forth also  pop-file
 ;
 
 (
@@ -241,17 +241,17 @@ Answer a Request
   Thus we can't do anything else but look at the URL again and finally check, if the requested
   file really is available:
 )
-VARIABLE htmldir
+variable htmldir
 
 : rework-htmldir ( addr u -- addr' u' / ior )
     htmldir $!
     htmldir $@ 1 min s" ~" compare 0=
-    IF    s" /.html-data" htmldir dup $@ 2dup '/ scan
+    if    s" /.html-data" htmldir dup $@ 2dup '/ scan
           nip - nip $ins
-    ELSE  s" /usr/local/httpd/htdocs/" htmldir 0 $ins  THEN
+    else  s" /usr/local/httpd/htdocs/" htmldir 0 $ins  then
     htmldir $@ 1- 0 max + c@ '/ = htmldir $@len 0= or
-    IF  s" index.html" htmldir dup $@len $ins  THEN
-    htmldir $@ file-status nip ?dup ?EXIT
+    if  s" index.html" htmldir dup $@len $ins  then
+    htmldir $@ file-status nip ?dup ?exit
     htmldir $@
 ;
 
@@ -260,7 +260,7 @@ VARIABLE htmldir
   file suffix is all we need to decide, so we extract it next.
 )
 : >mime ( addr u -- mime u' )  2dup tuck over + 1- ?DO
-    I c@ '. = ?LEAVE  1-  -1 +LOOP  /string
+    I c@ '. = ?LEAVE  1-  -1 +loop  /string
 ;
 
 (
@@ -278,7 +278,7 @@ VARIABLE htmldir
 : transparent ( size fd -- ) { fd }
     $4000 allocate throw swap dup 0 ?DO
         2dup over swap $4000 min fd read-file throw type
-        $4000 - $4000 +LOOP  drop
+        $4000 - $4000 +loop  drop
     free fd close-file throw throw
 ;
 
@@ -293,9 +293,9 @@ VARIABLE htmldir
 : .connection ( -- )
     ." Connection: "
     connection $@ s" Keep-Alive" compare 0= maxnum @ 0> and
-    IF  connection $@ type cr
+    if  connection $@ type cr
         ." Keep-Alive: timeout=15, max=" maxnum @ 0 .r cr
-        -1 maxnum +!  ELSE  ." close" cr maxnum off  THEN
+        -1 maxnum +!  else  ." close" cr maxnum off  then
 ;
 
 (
@@ -307,10 +307,10 @@ VARIABLE htmldir
   transparent:
 )
 : transparent: ( addr u -- ) Create  here over 1+ allot place
-    DOES>  >r  >file
+    does>  >r  >file
     .connection
     ." Content-Type: "  r> count type cr cr
-    data @ IF  transparent  ELSE  nip close-file throw  THEN
+    data @ if  transparent  else  nip close-file throw  then
 ;
 
 (
@@ -321,11 +321,11 @@ VARIABLE htmldir
 )
 : mime-read ( addr u -- )  r/o open-file throw
     push-file loadfile !  0 loadline ! blk off
-    BEGIN  refill  WHILE  name
-        BEGIN  >in @ >r name nip  WHILE
-            r> >in ! 2dup transparent:  REPEAT
+    begin  refill  while  name
+        begin  >in @ >r name nip  while
+            r> >in ! 2dup transparent:  repeat
         2drop rdrop
-    REPEAT  loadfile @ close-file pop-file throw
+    repeat  loadfile @ close-file pop-file throw
 ;
 
 (
@@ -348,7 +348,7 @@ wordlist constant mime
 mime set-current
 
 : shtml ( addr u -- )  lastrequest
-    data @ IF  included  ELSE  2drop  THEN
+    data @ if  included  else  2drop  then
 ;
 
 s" application/pgp-signature" transparent: sig
@@ -369,12 +369,12 @@ Error Reports
   in HTML) would be nice:
 )
 : .server ( -- )  ." Server: Gforth httpd/0.1 ("
-    s" os-class" environment? IF  type  THEN  ." )" cr
+    s" os-class" environment? if  type  then  ." )" cr
 ;
 : .ok  ( -- ) ." HTTP/1.1 200 OK" cr .server ;
 : html-error ( n addr u -- )
     ." HTTP/1.1 " 2 pick . 2dup type cr .server
-    2 pick &405 = IF ." Allow: GET, HEAD, POST" cr  THEN
+    2 pick &405 = if ." Allow: GET, HEAD, POST" cr  then
     lastrequest
     ." <HTML><HEAD><TITLE>" 2 pick . 2dup type
     ." </TITLE></HEAD>" cr
@@ -384,8 +384,8 @@ Error Reports
     ." <HR><ADDRESS>Gforth httpd 0.1</ADDRESS>" cr
     ." </BODY></HTML>" cr
 ;
-: .nok ( -- ) command? @ IF  &405 s" Method Not Allowed"
-    ELSE  &400 s" Bad Request"  THEN  html-error
+: .nok ( -- ) command? @ if  &405 s" Method Not Allowed"
+    else  &400 s" Bad Request"  then  html-error
     ." <P>Your browser sent a request that this server "
     ." could not understand.</P>" cr
     ." <P>Invalid request in: <CODE>"
@@ -405,16 +405,16 @@ Top Level Definitions
   including error exits and default paths. We need to flush the output, so that the next request
   doesn't stall. And do that all over again \( n \) times, until we reach the last request.
 )
-: http ( -- )  get-input  IF  .nok  ELSE
-    IF  url $@ 1 /string rework-htmldir
-        dup 0< IF  drop .nofile
-        ELSE  .ok  2dup >mime mime search-wordlist
-            0= IF  ['] txt  THEN  catch IF  maxnum off THEN
-    THEN  THEN  THEN  outfile-id flush-file throw
+: http ( -- )  get-input  if  .nok  else
+    if  url $@ 1 /string rework-htmldir
+        dup 0< if  drop .nofile
+        else  .ok  2dup >mime mime search-wordlist
+            0= if  ['] txt  then  catch if  maxnum off then
+    then  then  then  outfile-id flush-file throw
 ;
 
 : httpd  ( n -- )  maxnum !
-    BEGIN  ['] http catch  maxnum @ 0= or  UNTIL
+    begin  ['] http catch  maxnum @ 0= or  until
 ;
 
 (
@@ -422,7 +422,7 @@ Top Level Definitions
   new system image.
 )
 
-script? [IF]  :noname &100 httpd bye ; is bootmessage  [THEN]
+script? [if]  :noname &100 httpd bye ; is bootmessage  [then]
 
 (
 Scripting
@@ -433,8 +433,8 @@ Scripting
   started, <HTML>:
 )
 : $> ( -- )
-    BEGIN  source >in @ /string s" <$" search  0= WHILE
-        type cr refill  0= UNTIL  EXIT  THEN
+    begin  source >in @ /string s" <$" search  0= while
+        type cr refill  0= until  exit  then
     nip source >in @ /string rot - dup 2 + >in +! type
 ;
 : <HTML> ( -- )  ." <HTML>" $> ;
@@ -451,11 +451,11 @@ Scripting
 <BODY>
 <H1>Computing Primes</H1><$ 25 Constant #prim $>
 <P>The first <$ #prim . $> primes are: <$
-: prim?  0 over 2 max 2 ?DO  over I mod 0= or  LOOP  nip 0= ;
+: prim?  0 over 2 max 2 ?DO  over I mod 0= or  loop  nip 0= ;
 : prims ( n -- )  0 swap  2
-    swap 0 DO  dup prim? IF  swap  IF  ." , "  THEN  true swap
-    dup 0 .r 1+  1  ELSE  1+  0  THEN
-    +LOOP  drop
+    swap 0 DO  dup prim? if  swap  if  ." , "  then  true swap
+    dup 0 .r 1+  1  else  1+  0  then
+    +loop  drop
 ;
     #prim prims $> .</P>
     </BODY>

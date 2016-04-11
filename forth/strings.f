@@ -13,9 +13,9 @@
 
 : delete   ( addr u n -- )
     over min >r  r@ - ( left over )  dup 0>
-    IF
+    if
         2dup swap dup  r@ +  -rot swap move
-    THEN
+    then
     + r> bl fill
 ;
 
@@ -31,14 +31,14 @@
   up to multiplies of four cells.
 )
 : $padding ( n -- n' )
-    [ 6 cells ] Literal + [ -4 cells ] Literal and
+    [ 6 cells ] literal + [ -4 cells ] literal and
 ;
 
 ( $! stores a string at an address, If there was a string there already, that string will be lost. )
 : $! ( addr1 u addr2 -- )
-    dup @ IF
+    dup @ if
         dup @ free throw
-    THEN
+    then
     over $padding allocate throw over ! @
     over >r rot over cell+ r> move 2dup ! + cell+ bl swap c!
 ;
@@ -81,9 +81,9 @@
 ( $split divides a string into two, with one char as separator (e.g. '? for arguments) )
 : $split ( addr u char -- addr1 u1 addr2 u2 )
     >r 2dup r> scan dup >r
-    dup IF
+    dup if
         1 /string
-    THEN
+    then
     2swap r> - 2swap
 ;
 
@@ -93,9 +93,9 @@
   with '& -- at ease.
 )
 : $iter ( .. $addr char xt -- .. ) { char xt }
-    $@ BEGIN dup  WHILE
+    $@ begin dup  while
         char $split >r >r xt execute r> r>
-    REPEAT
+    repeat
     2drop
 ;
 
