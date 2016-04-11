@@ -673,7 +673,7 @@ stack points ->	| addr of DOUBLE   |	   + 4 =   +------------------+
            ^       len                         pad  codeword      |
 	   |							  V
 	  LINK in next word				points to codeword of DUP
-	
+
 	Initially we can't just write ": DOUBLE DUP + ;" (ie. that literal string) here because we
 	don't yet have anything to read the string, break it up at spaces, parse each word, etc. etc.
 	So instead we will have to define built-in words using the GNU assembler data constructors
@@ -775,28 +775,28 @@ code_\label :			// assembler code follows
 	you can skip the details.
 */
 
-	defcode "DROP",4,,DROP
+	defcode "drop",4,,DROP
 	addi a15, a15, 4		// drop top of stack
 	NEXT
 
-	defcode "SWAP",4,,SWAP		// X <-> Y
+	defcode "swap",4,,SWAP		// X <-> Y
 	READTOSX a8
 	READTOSY a9
 	WRITETOSX a9
 	WRITETOSY a8
 	NEXT
 
-	defcode "DUP",3,,DUP		// PUSH X
+	defcode "dup",3,,DUP		// PUSH X
 	READTOSX a8
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "OVER",4,,OVER		// PUSH Y
+	defcode "over",4,,OVER		// PUSH Y
 	READTOSY a8
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "ROT",3,,ROT		// HP RPN (ROTATE UP)
+	defcode "rot",3,,ROT		// HP RPN (ROTATE UP)
 	READTOSX a8
 	READTOSY a9
 	READTOSZ a10
@@ -805,7 +805,7 @@ code_\label :			// assembler code follows
 	WRITETOSX a10			// Z -> X
 	NEXT
 
-	defcode "-ROT",4,,NROT		// HP RPN (ROTATE DOWN)
+	defcode "-rot",4,,NROT		// HP RPN (ROTATE DOWN)
 	READTOSX a8
 	READTOSY a9
 	READTOSZ a10
@@ -814,18 +814,18 @@ code_\label :			// assembler code follows
 	WRITETOSX a9			// Y -> X
 	NEXT
 
-	defcode "2DROP",5,,TWODROP	// drop top two elements of stack
+	defcode "2drop",5,,TWODROP	// drop top two elements of stack
 	addi a15,a15,8
 	NEXT
 
-	defcode "2DUP",4,,TWODUP	// duplicate top two elements of stack
+	defcode "2dup",4,,TWODUP	// duplicate top two elements of stack
 	READTOSY a9
 	READTOSX a8
 	PUSHDATASTACK a9		// push TOS-Y
 	PUSHDATASTACK a8		// push TOS-X
 	NEXT
 
-	defcode "2SWAP",5,,TWOSWAP	// swap top two pairs of elements of stack
+	defcode "2swap",5,,TWOSWAP	// swap top two pairs of elements of stack
 					// tos_x  <-->  tos_z
 					// tos_y  <-->  tos_t
 	READTOSX a8
@@ -838,7 +838,7 @@ code_\label :			// assembler code follows
 	WRITETOST a9
 	NEXT
 
-	defcode "?DUP",4,,QDUP		// duplicate top of stack if non-zero
+	defcode "?dup",4,,QDUP		// duplicate top of stack if non-zero
 	READTOSX a8
 	beqz a8, L1
 	PUSHDATASTACK a8
@@ -898,7 +898,7 @@ L1:	NEXT
 
 	The ROM routine should be called like this, but 100/3 gives 3... so forthright.f has been changed.
 
-	defcode "U/MOD",5,,UDIVMOD	// This word is relatiely slow, but only used when
+	defcode "u/mod",5,,UDIVMOD	// This word is relatiely slow, but only used when
 					// converting numbers to text.
 	READTOSX a2			// read denominator
 	READTOSY a3			// read numerator
@@ -913,7 +913,7 @@ L1:	NEXT
 
 */
 
-	defcode "U/MOD",5,,UDIVMOD	// This word is relatiely slow, but only used when
+	defcode "u/mod",5,,UDIVMOD	// This word is relatiely slow, but only used when
 					// converting numbers to text.
 	READTOSX a3			// read denominator
 	READTOSY a2			// read numerator
@@ -933,7 +933,7 @@ L1:	NEXT
 	PUSHDATASTACK a2		// push quotient
 	NEXT
 
-	defcode "MOD",3,,MOD		// This word is relatively slow
+	defcode "mod",3,,MOD		// This word is relatively slow
 	POPDATASTACK a3			// pop denominator
 	POPDATASTACK a2			// pop numerator
 	C_CALL forthright_modulo
@@ -1052,28 +1052,28 @@ L12:	WRITETOSX a9
 L13:	WRITETOSX a9
 	NEXT
 
-	defcode "AND",3,,AND		// bitwise AND
+	defcode "and",3,,AND		// bitwise AND
 	POPDATASTACK a8
 	READTOSX a9
 	and a8, a8, a9			// And
 	WRITETOSX a8
 	NEXT
 
-	defcode "OR",2,,OR		// bitwise OR
+	defcode "or",2,,OR		// bitwise OR
 	POPDATASTACK a8
 	READTOSX a9
 	or a8, a8, a9			// Or
 	WRITETOSX a8
 	NEXT
 
-	defcode "XOR",3,,XOR		// bitwise XOR
+	defcode "xor",3,,XOR		// bitwise XOR
 	POPDATASTACK a8
 	READTOSX a9
 	xor a8, a8, a9			// Xor
 	WRITETOSX a8
 	NEXT
 
-	defcode "INVERT",6,,INVERT	// this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
+	defcode "invert",6,,INVERT	// this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
 	READTOSX a8
 	movi a9, 0			// load a9 with zero
 	addi a9, a9, -1			// a9 is now all zero
@@ -1081,7 +1081,7 @@ L13:	WRITETOSX a9
 	WRITETOSX a8
 	NEXT
 
-	defcode "LSHIFT",6,,SHIFTL	// shift bits left
+	defcode "lshift",6,,SHIFTL	// shift bits left
 	POPDATASTACK a8			// number of bits to shift
 	READTOSX a9			// read value
 	ssl a8				// set shift amount register
@@ -1089,7 +1089,7 @@ L13:	WRITETOSX a9
 	WRITETOSX a8			// write the shifted value to top of stack
 	NEXT
 
-	defcode "RSHIFT",6,,SHIFTR	// shift bits right (logically, i.e. fills MSBs with zeroes)
+	defcode "rshift",6,,SHIFTR	// shift bits right (logically, i.e. fills MSBs with zeroes)
 	POPDATASTACK a8			// number of bits to shift
 	READTOSX a9			// read value
 	ssr a8				// set shift amount register
@@ -1097,7 +1097,7 @@ L13:	WRITETOSX a9
 	WRITETOSX a8			// write the shifted value to top of stack
 	NEXT
 
-	defcode "RSHIFT_A",8,,SHIFTRA	// shift bits left (arithmetically, i.e. divide by 2)
+	defcode "rshift_a",8,,SHIFTRA	// shift bits left (arithmetically, i.e. divide by 2)
 	POPDATASTACK a8			// number of bits to shift
 	READTOSX a9			// read value
 	ssr a8				// set shift amount register
@@ -1128,7 +1128,7 @@ L13:	WRITETOSX a9
 	What happens when the + function does NEXT?  Well, the following code is executed.
 */
 
-	defcode "EXIT",4,,EXIT
+	defcode "exit",4,,EXIT
 	POPRSP a14		// pop return stack into instruction pointer
 	NEXT
 
@@ -1176,7 +1176,7 @@ L13:	WRITETOSX a9
 
 */
 
-	defcode "LIT",3,,LIT
+	defcode "lit",3,,LIT
 	// a14 points to the next command, but in this case it points to the next
 	// literal 32 bit integer.  Get that literal into a8 and increment a14.
 	// (cf. NEXT macro)
@@ -1227,20 +1227,20 @@ L13:	WRITETOSX a9
 	Byte-oriented operations only work on architectures which permit them (i386 is one of those).
  */
 
-	defcode "C!",2,,STOREBYTE
+	defcode "c!",2,,STOREBYTE
 	POPDATASTACK a8		// address to store at
 	POPDATASTACK a9		// data to store there
 	s8i a9, a8, 0		// store it
 	NEXT
 
-	defcode "C@",2,,FETCHBYTE
+	defcode "c@",2,,FETCHBYTE
 	POPDATASTACK a8		// address to fetch
 	l8ui a9, a8, 0		// fetch it
 	PUSHDATASTACK a9	// push value onto stack
 	NEXT
 
 /* C@C! is a useful byte copy primitive. */
-	defcode "C@C!",4,,CCOPY
+	defcode "c@c!",4,,CCOPY
 	READTOSX a8		// read destination address
 	READTOSY a9		// read source address
 	l8ui a10, a9, 0		// fetch
@@ -1252,7 +1252,7 @@ L13:	WRITETOSX a9
 	NEXT
 
 /* and CMOVE is a block copy operation.  TODO: ??optimize with 32bit fetches?? */
-	defcode "CMOVE",5,,CMOVE
+	defcode "cmove",5,,CMOVE
 	POPDATASTACK a8		// length
 	POPDATASTACK a9		// destination address
 	POPDATASTACK a10	// source address
@@ -1284,37 +1284,37 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	BASE		The current base for printing and reading numbers.
 
 */
-	defcode "STATE",5,,STATE
+	defcode "state",5,,STATE
 	addi a8, a12, system_t_state
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "DP",2,,DP
+	defcode "dp",2,,DP
 	addi a8, a12, system_t_dp
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "DATA-SEGMENT-START",18,,DS0
+	defcode "data-segment-start",18,,DS0
 	READ_VAR a8, system_t_data_segment
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "DATA-SEGMENT-SIZE",17,,DS_SIZE
+	defcode "data-segment-size",17,,DS_SIZE
 	READ_VAR a8, system_t_data_segment_size
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "LATEST",6,,LATEST
+	defcode "latest",6,,LATEST
 	addi a8, a12, system_t_latest
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "S0",2,,S0
+	defcode "s0",2,,S0
 	addi a8, a12, system_t_s0
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode "BASE",4,,BASE
+	defcode "base",4,,BASE
 	addi a8, a12, system_t_base
 	PUSHDATASTACK a8
 	NEXT
@@ -1346,15 +1346,15 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	NEXT
 	.endm
 
-	defcode "DOCOL",5,,__DOCOL
+	defcode "docol",5,,__DOCOL
 	l32r a8, ADDR_TO_DOCOL
 	PUSHDATASTACK a8
 	NEXT
 
-	defconst "VERSION",7,VERSION,FORTHRIGHT_VERSION_MAJOR
-	defconst "F_IMMED",7,__F_IMMED,F_IMMED
-	defconst "F_HIDDEN",8,__F_HIDDEN,F_HIDDEN
-	defconst "F_LENMASK",9,__F_LENMASK,F_LENMASK
+	defconst "version",7,VERSION,FORTHRIGHT_VERSION_MAJOR
+	defconst "f_immed",7,__F_IMMED,F_IMMED
+	defconst "f_hidden",8,__F_HIDDEN,F_HIDDEN
+	defconst "f_lenmask",9,__F_LENMASK,F_LENMASK
 
 /*
 	RETURN STACK ----------------------------------------------------------------------
@@ -1362,32 +1362,32 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	These words allow you to access the return stack.  Recall that the register %ebp always points to
 	the top of the return stack.
 */
-	defcode "R0",2,,RZ
+	defcode "r0",2,,RZ
 	READ_VAR a8, system_t_return_stack		// location of stack
 	READ_VAR a9, system_t_return_stack_size		// size of stack
 	add a8, a8, a9					// pointer to 'beyond stack', i.e. R0
 	PUSHDATASTACK a8
 	NEXT
 
-	defcode ">R",2,,TOR
+	defcode ">r",2,,TOR
 	POPDATASTACK a8					// pop parameter stack into a8
 	PUSHRSP a8					// push it on to the return stack
 	NEXT
 
-	defcode "R>",2,,FROMR
+	defcode "r>",2,,FROMR
 	POPRSP a8					// pop return stack on to a8
 	PUSHDATASTACK a8				// and push on to parameter stack
 	NEXT
 
-	defcode "RSP@",4,,RSPFETCH
+	defcode "rsp@",4,,RSPFETCH
 	PUSHDATASTACK a13
 	NEXT
 
-	defcode "RSP!",4,,RSPSTORE
+	defcode "rsp!",4,,RSPSTORE
 	POPDATASTACK a13
 	NEXT
 
-	defcode "RDROP",5,,RDROP
+	defcode "rdrop",5,,RDROP
 	addi a13, a13, 4		// pop return stack and throw away
 	NEXT
 
@@ -1398,14 +1398,14 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	The parameter stack pointer is always present in register a15.
 */
 
-	defcode "DSP@",4,,DSPFETCH
+	defcode "dsp@",4,,DSPFETCH
 	mov a8, a15		// get data stack pointer
 	addi a15, a15, -4	// make space on data stack
 	s32i a8, a15, 0		// store previous dsp on stack.
 	NEXT
 
 
-	defcode "DSP!",4,,DSPSTORE
+	defcode "dsp!",4,,DSPSTORE
 	l32i a15, a15, 0	// pop top of data stack to data stack pointer
 	NEXT
 
@@ -1450,7 +1450,7 @@ L14:	l8ui a11,a10,0		// fetch a byte
 
 	<---------------------- BUFFER_SIZE (4096 bytes) ---------------------->
 */
-	defcode "KEY",3,,KEY
+	defcode "key",3,,KEY
 	call0 _KEY
 	PUSHDATASTACK a2			// push return value on stack
 	NEXT
@@ -1528,7 +1528,7 @@ L15_1:
 	it would be a good exercise to add it.
 */
 
-	defcode "EMIT",4,,EMIT
+	defcode "emit",4,,EMIT
 	POPDATASTACK a2
 	call0 _EMIT
 	NEXT
@@ -1568,7 +1568,7 @@ _EMIT:
 	and immediate mode, and you'll understand why.
 */
 
-	defcode "WORD",4,,WORD
+	defcode "word",4,,WORD
 	SAFE_CALL _WORD
 	PUSHDATASTACK a2		// push base address
 	PUSHDATASTACK a3		// push length
@@ -1630,7 +1630,7 @@ L18:
 	were converted, so there is no error).  Second from top of stack is the parsed number or a
 	partial value if there was an error.
 */
-	defcode "NUMBER",6,,NUMBER
+	defcode "number",6,,NUMBER
 	POPDATASTACK a3			// length of string
 	POPDATASTACK a2			// start address of string
 	call0 _NUMBER
@@ -1731,7 +1731,7 @@ _NUMBER_ERROR:
 	(FIND) doesn't find dictionary entries which are flagged as HIDDEN.  See below for why.
 */
 
-	defcode "(FIND)",6,,PAREN_FIND
+	defcode "(find)",6,,PAREN_FIND
 	POPDATASTACK a3				// a3 = length
 	POPDATASTACK a2				// a2 = address
 	call0 _FIND
@@ -1806,7 +1806,7 @@ L28:	// Not found.
 	What does CFA stand for?  My best guess is "Code Field Address".
 */
 
-	defcode ">CFA",4,,TCFA
+	defcode ">cfa",4,,TCFA
 	POPDATASTACK a2
 	call0 _TCFA
 	PUSHDATASTACK a2
@@ -1850,7 +1850,7 @@ _TCFA:
 	You can see that >DFA is easily defined in FORTH just by adding 4 to the result of >CFA.
 */
 
-	defword ">DFA",4,,TDFA
+	defword ">dfa",4,,TDFA
 	.int TCFA		// >CFA		(get code field address)
 	.int INCR4		// 4+		(add 4 to it to get to next word)
 	.int EXIT		// EXIT		(return from FORTH word)
@@ -2005,7 +2005,7 @@ _TCFA:
 	constants and other data).
 */
 
-	defcode "HEADER,",7,,HEADER_COMMA
+	defcode "header,",7,,HEADER_COMMA
 
 	// Link pointer.
 	READ_VAR a11, system_t_dp			// a11 is the address of the header, i.e. the top
@@ -2121,12 +2121,12 @@ _COMMA:
 */
 
 	defword ":",1,,COLON
-	.int WORD			// Get the name of the new word
+	.int WORD				// Get the name of the new word
 	.int HEADER_COMMA		// Create the dictionary entry / header
-	.int LIT, DOCOL, COMMA		// Append DOCOL  (the codeword).
+	.int LIT, DOCOL, COMMA	// Append DOCOL  (the codeword).
 	.int LATEST, FETCH, HIDDEN	// Make the word hidden (see below for definition).
-	.int RBRAC			// Go into compile mode.
-	.int EXIT			// Return from the function.
+	.int RBRAC				// Go into compile mode.
+	.int EXIT				// Return from the function.
 
 /*
 	; (SEMICOLON) is also elegantly simple.  Notice the F_IMMED flag.
@@ -2166,7 +2166,7 @@ _COMMA:
 	The two usages are equivalent, to a first approximation.
 */
 
-	defcode "IMMEDIATE",9,F_IMMED,IMMEDIATE
+	defcode "immediate",9,F_IMMED,IMMEDIATE
 	READ_VAR a10, system_t_latest	// LATEST word.
 	l8ui a8, a10, 4			// load the name/flags byte.
 	movi a9, F_IMMED
@@ -2196,7 +2196,7 @@ _COMMA:
 	After this, only MAIN is 'exported' or seen by the rest of the program.
 */
 
-	defcode "HIDDEN",6,,HIDDEN
+	defcode "hidden",6,,HIDDEN
 	POPDATASTACK a10		// pop address to word, e.g. latest word in "HEADER,"
 	l8ui a8, a10, 4			// load the name/flags byte.
 	movi a9, F_HIDDEN
@@ -2204,7 +2204,7 @@ _COMMA:
 	s8i a8, a10, 4			// Update the F_HIDDEN flag in the LATEST word
 	NEXT
 
-	defword "HIDE",4,,HIDE
+	defword "hide",4,,HIDE
 	.int WORD			// Get the word (after HIDE).
 	.int PAREN_FIND			// Look up in the dictionary.
 	.int HIDDEN			// Set F_HIDDEN flag.
@@ -2290,12 +2290,12 @@ _COMMA:
 					  +-------------+
 */
 
-	defcode "BRANCH",6,,BRANCH
+	defcode "branch",6,,BRANCH
 	l32i a8, a14, 0			// read offset
 	add a14, a14, a8		// add the offset to the instruction pointer
 	NEXT
 
-	defcode "0BRANCH",7,,ZBRANCH
+	defcode "0branch",7,,ZBRANCH
 	POPDATASTACK a8			// get condition from top of stack
 	beqz a8, code_BRANCH		// top of stack is zero? if so, jump back to the branch function above
 	addi a14, a14, 4		// otherwise we need to skip the offset
@@ -2311,7 +2311,7 @@ _COMMA:
 	can make it a single Linux syscall.
 */
 
-	defcode "LITSTRING",9,,LITSTRING
+	defcode "litstring",9,,LITSTRING
 	l32i a8, a14, 0         // get the length of the string
 	addi a14, a14, 4	// advance the instruction pointer
 	PUSHDATASTACK a14	// push the address of the start of the string
@@ -2322,14 +2322,14 @@ _COMMA:
 	and a14, a14, a8	// align instruction pointer
 	NEXT
 
-	defcode "TELL",4,,TELL
+	defcode "tell",4,,TELL
 	POPDATASTACK a3
 	POPDATASTACK a2
 	C_CALL forthright_putChars
 	// TODO (niclas); putChars() returns a negative number if there was an error. What to do?
 	NEXT
 
-	defcode "ECHO",4,,ECHO
+	defcode "echo",4,,ECHO
 	POPDATASTACK a2
 	WRITE_VAR a2, system_t_echo
 	NEXT
@@ -2342,7 +2342,7 @@ _COMMA:
 	data onto the stack.
 
 	One will wonder how can a FORTH word which owns complicated data specify its behavior on
-	these data using other FORTH words. The magic word DODOES serves this purpose. 
+	these data using other FORTH words. The magic word DODOES serves this purpose.
 
 	The diagram below shows how DODOES works.  When DODOES executes, it pushes the pointer to
 	its data onto the stack and execute the behavior words pointed to by the behavior pointer.
@@ -2375,7 +2375,7 @@ L31:	addi a8, a8, 8
 	PUSHDATASTACK a8
 	NEXT
 
-	defconst "DODOES",6,__DODOES,DODOES
+	defconst "dodoes",6,__DODOES,DODOES
 
 /*
 	QUIT AND INTERPRET ----------------------------------------------------------------------
@@ -2390,7 +2390,7 @@ L31:	addi a8, a8, 8
 	description -- see: http://en.wikipedia.org/wiki/REPL).
 */
 	// QUIT must not return (ie. must not call EXIT).
-	defword "QUIT",4,,QUIT
+	defword "quit",4,,QUIT
 	.int RZ,RSPSTORE			// R0 RSP!, clear the return stack
 	.int INTERPRET				// interpret the next word
 	.int BRANCH,-8				// and loop (indefinitely)
@@ -2399,7 +2399,7 @@ L31:	addi a8, a8, 8
 	This interpreter is pretty simple, but remember that in FORTH you can always override
 	it later with a more powerful one!
  */
-	defcode "INTERPRET",9,,INTERPRET
+	defcode "interpret",9,,INTERPRET
 	call0 _WORD				// Returns a3 = length, a2 = pointer to word.
 
 	// Is it in the dictionary?
@@ -2495,13 +2495,13 @@ L37:	// Parse error (not a known word or a number in the current BASE).
 	WRITETOSX a8
 	NEXT
 
-	defcode "(DO)", 4,,PAREN_DO
+	defcode "(do)", 4,,PAREN_DO
 	POPDATASTACK a8		// pop parameter stack into a8 and a9
 	POPDATASTACK a9
 	PUSH2RSP a9, a8		// push it on to the return stack
 	NEXT
 
-	defcode "(LOOP)", 6,,PAREN_LOOP
+	defcode "(loop)", 6,,PAREN_LOOP
 	POP2RSP a9, a8
 	addi a8, a8, 1
 	beq a9, a8, L40
@@ -2513,7 +2513,7 @@ L40:
 	addi a14, a14, 4	// Advance instruction pointer
 	NEXT
 
-	defcode "(+LOOP)", 7,,PAREN_PLUS_LOOP
+	defcode "(+loop)", 7,,PAREN_PLUS_LOOP
 	POP2RSP a9, a8		// index in a8, limit in a9
 	sub a8, a8, a9		// index-limit in %eax
 	POPDATASTACK a10	// n in %ebx
@@ -2529,19 +2529,47 @@ L41:
 	addi a14, a14, 4	// advance instruction pointer
 	NEXT
 
-	defcode "UNLOOP", 6,,UNLOOP
+	defcode "unloop", 6,,UNLOOP
 	l32i a13, a13, 8	// Read top+8 of Return Stack
 	NEXT
 
-	defcode "I", 1,,I
+	defcode "i", 1,,I
 	l32i a8, a13, 0		// Read top of Return Stack
 	PUSHDATASTACK a8	// Push to Data Stack
 	NEXT
 
-	defcode "J", 1,,J
+	defcode "j", 1,,J
 	l32i a8, a13, 8		// Read top+8 of Return Stack
 	PUSHDATASTACK a8	// Push to Data Stack
 	NEXT
+
+/*
+	Filesystem support
+	In Forthright, we are doing a direct mapping to the SPIFFS filesystem, that is available
+	in the ESP8266 SDK.
+*/
+	// ( fh pos -- )
+	defcode "fseek", 5,,LSEEK
+	NEXT
+
+	// ( fh buf len -- len )
+	defcode "fread", 5,,READ
+	NEXT
+
+	defcode "fwrite", 6,,FWRITE
+	NEXT
+
+	// ( addr len opts -- fh )
+	defcode "fopen", 6,,FOPEN
+	NEXT
+
+	// ( fh -- )
+	defcode "fclose", 6,,FCLOSE
+	NEXT
+
+	defcode "fdirlist", 8,,FDIRLIST
+	NEXT
+
 
 /*
 	ODDS AND ENDS ----------------------------------------------------------------------
@@ -2552,24 +2580,21 @@ L41:
 	EXECUTE is used to run execution tokens.  See the discussion of execution tokens in the
 	FORTH code for more details.
 
-	In this FORTH, EXECUTE must be the last word in the built-in (assembler) dictionary because we
-	initialise the LATEST variable to point to it.  This means that if you want to extend the assembler
-	part, you must put new words before EXECUTE, or else change how LATEST is initialised.
 */
 
-	defcode "CHAR",4,,CHAR
+	defcode "char",4,,CHAR
 	call0 _WORD		// Returns a3 = length, a2 = pointer to word.
 	l8ui a8, a2, 0		// Get the first character of the word.
 	PUSHDATASTACK a8	// Push it onto the stack.
 	NEXT
 
 
-	defcode "INIT-DONE",9,,INITIALIZEDONE
+	defcode "init-done",9,,INITIALIZEDONE
 	movi a8, 0
 	WRITE_VAR a8, system_t_initializing		// clear initializing flag
 	NEXT
 
-	defcode "EXECUTE",7,,EXECUTE
+	defcode "execute",7,,EXECUTE
 	s32i a8, a15, 0
 	POPDATASTACK a8		// Get xt into a8
 	l32i a8, a8, 0		// Load the address from memory
@@ -2578,6 +2603,157 @@ L41:
 	ill
 	ill
 	ill
+
+
+/* Define some character constants */
+
+	defconst "nl",4,NEWLINE,10
+	defconst "bl",2,BLANK,32
+
+// CR prints a carriage return
+//      : cr '\n' emit ;
+	defword "cr",2,,CR
+	.int NEWLINE
+	.int EMIT
+	.int EXIT
+
+// space prints a space
+//      : space bl emit ;
+	defword "space",5,,SPACE
+	.int BLANK
+	.int EMIT
+	.int EXIT
+
+// NEGATE leaves the negative of a number on the stack.
+//      : negate 0 swap - ;
+	defword "negate",6,,NEGATE
+	.int LIT, 0
+	.int SWAP
+	.int SUB
+	.int EXIT
+
+// Standard words for booleans.
+//      : true  -1 ;
+	defconst "true",4,TRUE,-1
+
+//      : false 0 ;
+	defconst "false",5,FALSE,0
+
+//      : not   0= ;
+	defword "not",3,,NOT
+	.int ZEQU
+	.int EXIT
+
+/*
+
+// HERE fetch the data stack pointer.
+//      : here dp @ ;
+	defword "here",4,,HERE
+	.int DP
+	.int FETCH
+	.int EXIT
+
+// LITERAL takes whatever is on the stack and compiles LIT <foo>
+//      : literal immediate
+//	        ['] lit ,   \ compile LIT
+//	        ,           \ compile the literal itself (from the stack)
+//	    ;
+	defword "literal",7,,LITERAL
+	.int BRACKET_TICK, LIT, COMMA
+	.int COMMA
+	.int EXIT
+
+// Now we can use [ and ] to insert literals which are calculated at compile time.  (Recall that
+// [ and ] are the FORTH words which switch into and out of immediate mode.)
+// Within definitions, use [ ... ] LITERAL anywhere that '...' is a constant expression which you
+// would rather only compute once (at compile time, rather than calculating it each time your word runs).
+//      : ':'
+//      	[           \ go into immediate mode (temporarily)
+//      	char :      \ push the number 58 (ASCII code of colon) on the parameter stack
+//      	]           \ go back to compile mode
+//      	literal     \ compile LIT 58 as the definition of this word
+//      ;
+	defword "':'",3,,TICK_COLON
+	.int LBRAC
+	.int CHAR
+	.int 58         // character ':'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+// A few more character constants defined the same way as above.
+//      : ';' [ char ; ] literal ;
+	defword "';'",3,,TICK_SEMICOLON
+	.int LBRAC
+	.int CHAR
+	.int ';'         // character ';'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '(' [ char ( ] literal ;
+	defword "'('",3,,TICK_LPAREN
+	.int LBRAC
+	.int CHAR
+	.int '('         // character '('
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : ')' [ char ) ] literal ;
+	defword "')'",3,,TICK_RPAREN
+	.int LBRAC
+	.int CHAR
+	.int ')'         // character ')'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '"' [ char " ] literal ;
+	defword "'\"'",3,,TICK_QUOTE
+	.int LBRAC
+	.int CHAR
+	.int '"'         // character '"'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : 'A' [ char A ] literal ;
+	defword "'A'",3,,TICK_A
+	.int LBRAC
+	.int CHAR
+	.int 'A'         // character 'A'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '0' [ char 0 ] literal ;
+	defword "'0'",3,,TICK_ZERO
+	.int LBRAC
+	.int CHAR
+	.int '0'         // character '0'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '-' [ char - ] literal ;
+	defword "'-'",3,,TICK_DASH
+	.int LBRAC
+	.int CHAR
+	.int '-'         // character '-'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '.' [ char . ] literal ;
+	defword "'.'",3,,TICK_DOT
+	.int LBRAC
+	.int CHAR
+	.int '.'         // character '.'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+*/
 
 /*	The following declaration makes it possible to get hold of the entry point into
 	the dictionary, and set that to the LATEST variable in system_d
