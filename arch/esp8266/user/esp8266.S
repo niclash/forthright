@@ -1426,10 +1426,6 @@ L14:	l8ui a11,a10,0		// fetch a byte
 	l32i a15, a15, 0	// pop top of data stack to data stack pointer
 	NEXT
 
-/* GPIO Support
-
- */
-
 /*
 	INPUT AND OUTPUT ----------------------------------------------------------------------
 

@@ -11,18 +11,18 @@
 \ : ':' [ char : ] literal ;
 \ : ';' [ char ; ] literal ;
 \ : '(' [ char ( ] literal ;
-: ')' [ char ) ] literal ;
+\ : ')' [ char ) ] literal ;
 : '"' [ char " ] literal ;
 : 'A' [ char A ] literal ;
 : '0' [ char 0 ] literal ;
 : '-' [ char - ] literal ;
 : '.' [ char . ] literal ;
-: [compile] immediate word (find) >cfa , ;
-: recurse immediate latest @ >cfa , ;
+\ : [compile] immediate word (find) >cfa , ;
+\ : recurse immediate latest @ >cfa , ;
 : if immediate ['] 0branch , here 0 , ;
-: then immediate dup here swap - swap ! ;
+\ : then immediate dup here swap - swap ! ;
 : else immediate ['] branch , here 0 , swap dup here swap - swap ! ;
-: begin immediate here ;
+\ : begin immediate here ;
 : until immediate ['] 0branch , here - , ;
 : again immediate ['] branch , here - , ;
 : while immediate ['] 0branch , here swap 0 , ;
@@ -43,9 +43,9 @@
 	dup 0= until
 	drop
 ;
-: nip swap drop ;
-: tuck swap over ;
-: pick 1+ 4 * dsp@ + @ ;
+\ : nip swap drop ;
+\ : tuck swap over ;
+\ : pick 1+ 4 * dsp@ + @ ;
 : spaces
 	begin
 		dup 0>
@@ -55,8 +55,8 @@
 	repeat
 	drop
 ;
-: decimal 10 base ! ;
-: hex 16 base ! ;
+\ : decimal 10 base ! ;
+\ : hex 16 base ! ;
 : u.
 	base @ u/mod
 	?dup if

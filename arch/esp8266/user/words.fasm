@@ -96,7 +96,6 @@
 	.int LITERAL
 	.int EXIT
 
-/*
 //      : ')' [ char ) ] literal ;
 	defword "')'",3,,TICK_RPAREN
 	.int LBRAC
@@ -106,11 +105,12 @@
 	.int LITERAL
 	.int EXIT
 
+/*
 //      : '"' [ char " ] literal ;
 	defword "'\"'",3,,TICK_QUOTE
 	.int LBRAC
 	.int CHAR
-	.int '"'         // character '"'
+	.int 34         // character '"'
 	.int RBRAC
 	.int LITERAL
 	.int EXIT
@@ -119,7 +119,7 @@
 	defword "'A'",3,,TICK_A
 	.int LBRAC
 	.int CHAR
-	.int 'A'         // character 'A'
+	.int 65         // character 'A'
 	.int RBRAC
 	.int LITERAL
 	.int EXIT
@@ -128,7 +128,7 @@
 	defword "'0'",3,,TICK_ZERO
 	.int LBRAC
 	.int CHAR
-	.int '0'         // character '0'
+	.int 48         // character '0'
 	.int RBRAC
 	.int LITERAL
 	.int EXIT
@@ -151,3 +151,214 @@
 	.int LITERAL
 	.int EXIT
 */
+
+// While compiling, '[COMPILE] word' compiles 'word' if it would otherwise be IMMEDIATE.
+//      : [COMPILE] IMMEDIATE
+//          WORD		\ get the next word
+//          (FIND)		\ find it in the dictionary
+//          >CFA		\ get its codeword
+//          ,		\ and compile that
+//      ;
+	defword "[compile]",9,F_IMMED,BRACKET_COMPILE
+	.int WORD
+	.int PAREN_FIND
+	.int TCFA
+	.int COMMA
+	.int EXIT
+
+//  RECURSE makes a recursive call to the current word that is being compiled.
+//
+//  Normally while a word is being compiled, it is marked HIDDEN so that references to the
+//  same word within are calls to the previous definition of the word.  However we still have
+//  access to the word which we are currently compiling through the LATEST pointer so we
+//  can use that to compile a recursive call.
+//      : RECURSE IMMEDIATE
+//          LATEST @	\ LATEST points to the word being compiled at the moment
+//          >CFA		\ get the codeword
+//          ,		\ compile it
+//      ;
+	defword "recurse",7,F_IMMED,RECURSE
+	.int LATEST
+	.int FETCH
+	.int TCFA
+	.int COMMA
+	.int EXIT
+
+// CONTROL STRUCTURES ----------------------------------------------------------------------
+//
+// So far we have defined only very simple definitions.  Before we can go further, we really need to
+// make some control structures, like IF ... THEN and loops.  Luckily we can define arbitrary control
+// structures directly in FORTH.
+//
+// Please note that the control structures as I have defined them here will only work inside compiled
+// words.  If you try to type in expressions using IF, etc. in immediate mode, then they won't work.
+// Making these work in immediate mode is left as an exercise for the reader.
+
+// condition IF true-part THEN rest
+//   -- compiles to: --> condition 0BRANCH OFFSET true-part rest
+//   where OFFSET is the offset of 'rest'
+// condition IF true-part ELSE false-part THEN
+//   -- compiles to: --> condition 0BRANCH OFFSET true-part BRANCH OFFSET2 false-part rest
+//   where OFFSET if the offset of false-part and OFFSET2 is the offset of rest
+
+// IF is an IMMEDIATE word which compiles 0BRANCH followed by a dummy offset, and places
+// the address of the 0BRANCH on the stack.  Later when we see THEN, we pop that address
+// off the stack, calculate the offset, and back-fill the offset.
+//      : IF IMMEDIATE
+//          ['] 0BRANCH ,   \ compile 0BRANCH
+//          HERE            \ save location of the offset on the stack
+//          0 ,             \ compile a dummy offset
+//       ;
+/*
+	defword "if",2,F_IMMED,IF
+	.int BRACKET_TICK
+	.int ZBRANCH
+	.int COMMA
+	.int HERE
+	.int 0
+	.int COMMA
+	.int EXIT
+*/
+//      : THEN IMMEDIATE
+//          DUP
+//          HERE SWAP -     \ calculate the offset from the address saved on the stack
+//          SWAP !          \ store the offset in the back-filled location
+//      ;
+	defword "then",4,F_IMMED,THEN
+	.int DUP
+	.int HERE
+	.int SWAP
+	.int SUB
+	.int SWAP
+	.int STORE
+	.int EXIT
+
+//      : ELSE IMMEDIATE
+//          ['] BRANCH ,    \ definite branch to just over the false-part
+//          HERE            \ save location of the offset on the stack
+//          0 ,             \ compile a dummy offset
+//          SWAP            \ now back-fill the original (IF) offset
+//          DUP             \ same as for THEN word above
+//          HERE SWAP -
+//          SWAP !
+//      ;
+/*
+	defword "else",4,F_IMMED,ELSE
+	.int BRACKET_TICK
+	.int BRANCH
+	.int COMMA
+	.int HERE
+	.int 0
+	.int COMMA
+	.int SWAP
+	.int DUP
+	.int HERE
+	.int SWAP
+	.int SUB
+	.int SWAP
+	.int STORE
+	.int EXIT
+*/
+
+
+// BEGIN loop-part condition UNTIL
+//  -- compiles to: --> loop-part condition 0BRANCH OFFSET
+//  where OFFSET points back to the loop-part
+// This is like do { loop-part } while (condition) in the C language
+//      : BEGIN IMMEDIATE
+//          HERE            \ save location on the stack
+//      ;
+	defword "begin",5,F_IMMED,BEGIN
+	.int HERE
+	.int EXIT
+
+//      : UNTIL IMMEDIATE
+//          ['] 0BRANCH ,   \ compile 0BRANCH
+//          HERE -          \ calculate the offset from the address saved on the stack
+//          ,               \ compile the offset here
+//      ;
+
+// BEGIN loop-part AGAIN
+//  -- compiles to: --> loop-part BRANCH OFFSET
+//  where OFFSET points back to the loop-part
+// In other words, an infinite loop which can only be returned from with EXIT
+//      : AGAIN IMMEDIATE
+//          ['] BRANCH ,	\ compile BRANCH
+//          HERE -          \ calculate the offset back
+//          ,               \ compile the offset here
+//      ;
+
+// BEGIN condition WHILE loop-part REPEAT
+//  -- compiles to: --> condition 0BRANCH OFFSET2 loop-part BRANCH OFFSET
+//  where OFFSET points back to condition (the beginning) and OFFSET2 points to after the whole piece of code
+// So this is like a while (condition) { loop-part } loop in the C language
+//      : WHILE IMMEDIATE
+//          ['] 0BRANCH ,   \ compile 0BRANCH
+//          HERE            \ save location of the offset2 on the stack
+//          SWAP            \ get the original offset (from BEGIN)
+//          0 ,             \ compile a dummy offset2
+//      ;
+
+//      : REPEAT IMMEDIATE
+//          ['] BRANCH ,    \ compile BRANCH
+//          HERE - ,        \ and compile it after BRANCH
+//          DUP
+//          HERE SWAP -     \ calculate the offset2
+//          SWAP !          \ and back-fill it in the original location
+//      ;
+
+// UNLESS is the same as IF but the test is reversed.
+//
+// Note the use of [COMPILE]: Since IF is IMMEDIATE we don't want it to be executed while UNLESS
+// is compiling, but while UNLESS is running (which happens to be when whatever word using UNLESS is
+// being compiled -- whew!).  So we use [COMPILE] to reverse the effect of marking IF as immediate.
+// This trick is generally used when we want to write our own control words without having to
+// implement them all in terms of the primitives 0BRANCH and BRANCH, but instead reusing simpler
+// control words like (in this instance) IF.
+//      : UNLESS IMMEDIATE
+//          ['] NOT ,       \ compile NOT (to reverse the test)
+//          [COMPILE] IF    \ continue by calling the normal IF
+//      ;
+
+
+
+//      : NIP ( x y -- y ) SWAP DROP ;
+	defword "nip",3,,NIP
+	.int SWAP
+	.int DROP
+	.int EXIT
+
+//      : TUCK ( x y -- y x y ) SWAP OVER ;
+	defword "tuck",4,,TUCK
+	.int SWAP
+	.int OVER
+	.int EXIT
+
+//      : PICK ( x_u ... x_1 x_0 u -- x_u ... x_1 x_0 x_u )
+//          1+      ( add one because of 'u' on the stack )
+//          4 *     ( multiply by the word size )
+//          DSP@ +  ( add to the stack pointer )
+//          @       ( and fetch )
+//      ;
+	defword "pick",4,,PICK
+	.int INCR
+	.int 4
+	.int MUL
+	.int DSPFETCH
+	.int ADD
+	.int FETCH
+	.int EXIT
+
+//      : decimal 10 base ! ;
+	defword "decimal",7,,_DECIMAL
+	.int 10
+	.int BASE
+	.int STORE
+	.int EXIT
+
+//      : hex 16 base ! ;
+	defword "hex",3,,_HEX
+	.int 16
+	.int BASE
+	.int STORE
+	.int EXIT
