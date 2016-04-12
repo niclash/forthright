@@ -1,12 +1,13 @@
 #!/bin/sh
 #
-PORT=/dev/tty.SLAB_USBtoUART
+PORT=${PORT:-/dev/tty.SLAB_USBtoUART}
+ESPTOOL=${ESPTOOL:-esptool}
 BIN_PATH=target
 FLASH_MODE=dio
 FLASH_SIZE=32m
 FLASH_FREQUENCY=40m
 
-esptool --port=${PORT} \
+${ESPTOOL} --port=${PORT} \
         write_flash \
         -fm ${FLASH_MODE} \
         -fs ${FLASH_SIZE} \
