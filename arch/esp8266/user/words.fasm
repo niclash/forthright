@@ -1,0 +1,153 @@
+// This file contains all the Forth definitions that were in the original
+// JonesForth top level Forth program, but translated so they end up in
+// .rodata segment, which is effectively the equivalen of ROM on ESP8266.
+
+// This is done to save as much RAM as possible for applications.
+
+	defconst "nl",4,NEWLINE,10
+	defconst "bl",2,BLANK,32
+
+// CR prints a carriage return
+//      : cr '\n' emit ;
+	defword "cr",2,,CR
+	.int NEWLINE
+	.int EMIT
+	.int EXIT
+
+// space prints a space
+//      : space bl emit ;
+	defword "space",5,,SPACE
+	.int BLANK
+	.int EMIT
+	.int EXIT
+
+// NEGATE leaves the negative of a number on the stack.
+//      : negate 0 swap - ;
+	defword "negate",6,,NEGATE
+	.int LIT, 0
+	.int SWAP
+	.int SUB
+	.int EXIT
+
+// Standard words for booleans.
+//      : true  -1 ;
+	defconst "true",4,TRUE,-1
+
+//      : false 0 ;
+	defconst "false",5,FALSE,0
+
+//      : not   0= ;
+	defword "not",3,,NOT
+	.int ZEQU
+	.int EXIT
+
+
+// HERE fetch the data stack pointer.
+//      : here dp @ ;
+	defword "here",4,,HERE
+	.int DP
+	.int FETCH
+	.int EXIT
+
+// LITERAL takes whatever is on the stack and compiles LIT <foo>
+//      : literal immediate
+//	        ['] lit ,   \ compile LIT
+//	        ,           \ compile the literal itself (from the stack)
+//	    ;
+	defword "literal",7,F_IMMED,LITERAL
+	.int BRACKET_TICK, LIT, COMMA
+	.int COMMA
+	.int EXIT
+
+// Now we can use [ and ] to insert literals which are calculated at compile time.  (Recall that
+// [ and ] are the FORTH words which switch into and out of immediate mode.)
+// Within definitions, use [ ... ] LITERAL anywhere that '...' is a constant expression which you
+// would rather only compute once (at compile time, rather than calculating it each time your word runs).
+//      : ':'
+//      	[           \ go into immediate mode (temporarily)
+//      	char :      \ push the number 58 (ASCII code of colon) on the parameter stack
+//      	]           \ go back to compile mode
+//      	literal     \ compile LIT 58 as the definition of this word
+//      ;
+	defword "':'",3,,TICK_COLON
+	.int LBRAC
+	.int CHAR
+	.int 58         // character ':'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+// A few more character constants defined the same way as above.
+//      : ';' [ char ; ] literal ;
+	defword "';'",3,,TICK_SEMICOLON
+	.int LBRAC
+	.int CHAR
+	.int ';'         // character ';'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '(' [ char ( ] literal ;
+	defword "'('",3,,TICK_LPAREN
+	.int LBRAC
+	.int CHAR
+	.int '('         // character '('
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+/*
+//      : ')' [ char ) ] literal ;
+	defword "')'",3,,TICK_RPAREN
+	.int LBRAC
+	.int CHAR
+	.int ')'         // character ')'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '"' [ char " ] literal ;
+	defword "'\"'",3,,TICK_QUOTE
+	.int LBRAC
+	.int CHAR
+	.int '"'         // character '"'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : 'A' [ char A ] literal ;
+	defword "'A'",3,,TICK_A
+	.int LBRAC
+	.int CHAR
+	.int 'A'         // character 'A'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '0' [ char 0 ] literal ;
+	defword "'0'",3,,TICK_ZERO
+	.int LBRAC
+	.int CHAR
+	.int '0'         // character '0'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '-' [ char - ] literal ;
+	defword "'-'",3,,TICK_DASH
+	.int LBRAC
+	.int CHAR
+	.int '-'         // character '-'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+
+//      : '.' [ char . ] literal ;
+	defword "'.'",3,,TICK_DOT
+	.int LBRAC
+	.int CHAR
+	.int '.'         // character '.'
+	.int RBRAC
+	.int LITERAL
+	.int EXIT
+*/

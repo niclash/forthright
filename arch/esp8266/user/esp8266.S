@@ -2621,156 +2621,8 @@ L41:
 	ill
 	ill
 
+	.include "words.fasm"
 
-/* Define some character constants */
-
-	defconst "nl",4,NEWLINE,10
-	defconst "bl",2,BLANK,32
-
-// CR prints a carriage return
-//      : cr '\n' emit ;
-	defword "cr",2,,CR
-	.int NEWLINE
-	.int EMIT
-	.int EXIT
-
-// space prints a space
-//      : space bl emit ;
-	defword "space",5,,SPACE
-	.int BLANK
-	.int EMIT
-	.int EXIT
-
-// NEGATE leaves the negative of a number on the stack.
-//      : negate 0 swap - ;
-	defword "negate",6,,NEGATE
-	.int LIT, 0
-	.int SWAP
-	.int SUB
-	.int EXIT
-
-// Standard words for booleans.
-//      : true  -1 ;
-	defconst "true",4,TRUE,-1
-
-//      : false 0 ;
-	defconst "false",5,FALSE,0
-
-//      : not   0= ;
-	defword "not",3,,NOT
-	.int ZEQU
-	.int EXIT
-
-/*
-
-// HERE fetch the data stack pointer.
-//      : here dp @ ;
-	defword "here",4,,HERE
-	.int DP
-	.int FETCH
-	.int EXIT
-
-// LITERAL takes whatever is on the stack and compiles LIT <foo>
-//      : literal immediate
-//	        ['] lit ,   \ compile LIT
-//	        ,           \ compile the literal itself (from the stack)
-//	    ;
-	defword "literal",7,,LITERAL
-	.int BRACKET_TICK, LIT, COMMA
-	.int COMMA
-	.int EXIT
-
-// Now we can use [ and ] to insert literals which are calculated at compile time.  (Recall that
-// [ and ] are the FORTH words which switch into and out of immediate mode.)
-// Within definitions, use [ ... ] LITERAL anywhere that '...' is a constant expression which you
-// would rather only compute once (at compile time, rather than calculating it each time your word runs).
-//      : ':'
-//      	[           \ go into immediate mode (temporarily)
-//      	char :      \ push the number 58 (ASCII code of colon) on the parameter stack
-//      	]           \ go back to compile mode
-//      	literal     \ compile LIT 58 as the definition of this word
-//      ;
-	defword "':'",3,,TICK_COLON
-	.int LBRAC
-	.int CHAR
-	.int 58         // character ':'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-// A few more character constants defined the same way as above.
-//      : ';' [ char ; ] literal ;
-	defword "';'",3,,TICK_SEMICOLON
-	.int LBRAC
-	.int CHAR
-	.int ';'         // character ';'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-//      : '(' [ char ( ] literal ;
-	defword "'('",3,,TICK_LPAREN
-	.int LBRAC
-	.int CHAR
-	.int '('         // character '('
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-//      : ')' [ char ) ] literal ;
-	defword "')'",3,,TICK_RPAREN
-	.int LBRAC
-	.int CHAR
-	.int ')'         // character ')'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-//      : '"' [ char " ] literal ;
-	defword "'\"'",3,,TICK_QUOTE
-	.int LBRAC
-	.int CHAR
-	.int '"'         // character '"'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-//      : 'A' [ char A ] literal ;
-	defword "'A'",3,,TICK_A
-	.int LBRAC
-	.int CHAR
-	.int 'A'         // character 'A'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-//      : '0' [ char 0 ] literal ;
-	defword "'0'",3,,TICK_ZERO
-	.int LBRAC
-	.int CHAR
-	.int '0'         // character '0'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-//      : '-' [ char - ] literal ;
-	defword "'-'",3,,TICK_DASH
-	.int LBRAC
-	.int CHAR
-	.int '-'         // character '-'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-
-//      : '.' [ char . ] literal ;
-	defword "'.'",3,,TICK_DOT
-	.int LBRAC
-	.int CHAR
-	.int '.'         // character '.'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-*/
 
 /*	The following declaration makes it possible to get hold of the entry point into
 	the dictionary, and set that to the LATEST variable in system_d
@@ -2850,7 +2702,7 @@ forthright_start:
 
 	WRITE_VAR a15, system_t_s0		// save beginning of stack
 
-	READ_VAR a11, system_t_data_segment	// fet start position of data segment
+	READ_VAR a11, system_t_data_segment	// fetch start position of data segment
 	WRITE_VAR a11, system_t_dp		// save Forth variable named DP
 
 	READ_VAR a8, system_t_input_buffer	// get position of Input Buffer
