@@ -21,5 +21,9 @@ all:
 	# cat arch/esp8266/generated/intermediate1.asm | sed 's/  / /g' | sed -E 's/(^.*$$)/\t\t.ascii \"\1\\n\"/g' >arch/esp8266/generated/forthright.asm
 	cat forthright.f | grep -v "^ *\\\\" | grep -v "^ *$$" | sed 's/\\/\\\\/' | sed 's/"/\\"/g' | tr '\t' ' ' | sed 's/  / /g' | sed 's/  / /g' | sed 's/  / /g' | sed -E 's/(^.*$$)/\t\t.ascii \"\1\\n\"/g' >arch/esp8266/generated/forthright.asm
 	cd arch/esp8266 && make clean && make
+
+deploy:
+	cd arch/esp8266 && ./deploy.sh
+
 clean:
 	cd arch/esp8266 && make clean

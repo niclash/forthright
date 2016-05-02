@@ -52,6 +52,7 @@ GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
 SUBDIRS= \
 	common \
+	spiffs \
 	user
 
 endif # } PDIR
@@ -78,6 +79,7 @@ endif
 
 COMPONENTS_eagle.app.v6 = \
 	user/libuser.a  \
+	spiffs/libfs.a  \
 	common/libforthright.a
 
 LINKFLAGS_eagle.app.v6 = \

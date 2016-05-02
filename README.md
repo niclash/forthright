@@ -10,13 +10,16 @@ See https://github.com/chengchangwu/jonesforth
 
 ## Planned features
 
-    * Debug serial out
+    * Filesystem (SPIFFS)
     * GPIO
     * PWM
     * ADC
+    * Block I/O a la fig-Forth Forth-79/83 onto Flash SPI sectors directly.
+    * Debug serial out
     * Timer
     * I2C
     * SPI
+    * Actors, similar to Erlang
 
 To keep the higher level libraries reasonably portable, I think some constants
 will be required to be defined at Assembler level, or perhaps even in Makefile configuration.
@@ -35,7 +38,9 @@ Obvious candidates are;
 
    * 8051
       * Many Texas Instrument controllers are 8051 based
-      * ST Electronic range of 8051 based controllers.
+      * ST Microelectronic range of 8051 based controllers.
+
+   * Atmel (?)
 
 ## Note for Mac users
 This project requires a cross-compile environment, and Espressif recommends the crosstool-ng

@@ -49,14 +49,17 @@
 	.int FETCH
 	.int EXIT
 
+
 // LITERAL takes whatever is on the stack and compiles LIT <foo>
 //      : literal immediate
 //	        ['] lit ,   \ compile LIT
 //	        ,           \ compile the literal itself (from the stack)
 //	    ;
 	defword "literal",7,F_IMMED,LITERAL
-	.int BRACKET_TICK, LIT, COMMA
-	.int COMMA
+	.int BRACKET_TICK	// push address to next word on stack
+	.int LIT		// LIT address
+	.int COMMA		// put TOS (LIT) into word being compiled
+	.int COMMA		// put TOS (character preceding "literal") into word being compiled
 	.int EXIT
 
 // Now we can use [ and ] to insert literals which are calculated at compile time.  (Recall that

@@ -15,6 +15,11 @@ extern "C" {
 //   BASE            The current base for printing and reading numbers.
 
 #define MAX_WORD_SIZE 32
+#define DATA_SEGMENT_SIZE 8192
+#define DATA_STACK_SIZE 512
+#define RETURN_STACK_SIZE 512
+#define INPUT_BUFFER_SIZE 64
+
 
 typedef struct
 {
