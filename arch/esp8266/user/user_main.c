@@ -130,3 +130,18 @@ int ICACHE_FLASH_ATTR forthright_divide( int a, int b ) {
 int ICACHE_FLASH_ATTR forthright_modulo( int a, int b ) {
     return a % b;
 }
+
+void forthright_printNL0()
+{
+    char buf[12];
+    sprintf(buf, "\n");
+    forthright_putChars( buf, strlen(buf));
+}
+
+int forthright_printHex0( int value )
+{
+    char buf[12];
+    sprintf(buf, "%X ", value);
+    forthright_putChars( buf, strlen(buf));
+    return value;
+}

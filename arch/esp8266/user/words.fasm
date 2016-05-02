@@ -4,7 +4,7 @@
 
 // This is done to save as much RAM as possible for applications.
 
-	defconst "nl",4,NEWLINE,10
+	defconst "nl",2,NEWLINE,10
 	defconst "bl",2,BLANK,32
 
 // CR prints a carriage return
@@ -72,88 +72,59 @@
 //      	]           \ go back to compile mode
 //      	literal     \ compile LIT 58 as the definition of this word
 //      ;
-	defword "':'",3,,TICK_COLON
-	.int LBRAC
-	.int CHAR
-	.int 58         // character ':'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "':'",3,,TICK_COLON
+	movi a8, ':'
+	PUSHDATASTACK a8
+	NEXT
 
 // A few more character constants defined the same way as above.
 //      : ';' [ char ; ] literal ;
-	defword "';'",3,,TICK_SEMICOLON
-	.int LBRAC
-	.int CHAR
-	.int ';'         // character ';'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "';'",3,,TICK_SEMICOLON
+	movi a8, ';'
+	PUSHDATASTACK a8
+	NEXT
 
 //      : '(' [ char ( ] literal ;
-	defword "'('",3,,TICK_LPAREN
-	.int LBRAC
-	.int CHAR
-	.int '('         // character '('
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "'('",3,,TICK_L_PAREN
+	movi a8, '('
+	PUSHDATASTACK a8
+	NEXT
 
 //      : ')' [ char ) ] literal ;
-	defword "')'",3,,TICK_RPAREN
-	.int LBRAC
-	.int CHAR
-	.int ')'         // character ')'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "')'",3,,TICK_R_PAREN
+	movi a8, ')'
+	PUSHDATASTACK a8
+	NEXT
 
-/*
 //      : '"' [ char " ] literal ;
-	defword "'\"'",3,,TICK_QUOTE
-	.int LBRAC
-	.int CHAR
-	.int 34         // character '"'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "'\"'",3,,TICK_QUOTE
+	movi a8, '"'
+	PUSHDATASTACK a8
+	NEXT
 
 //      : 'A' [ char A ] literal ;
-	defword "'A'",3,,TICK_A
-	.int LBRAC
-	.int CHAR
-	.int 65         // character 'A'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "'A'",3,,TICK_A
+	movi a8, 'A'
+	PUSHDATASTACK a8
+	NEXT
 
 //      : '0' [ char 0 ] literal ;
-	defword "'0'",3,,TICK_ZERO
-	.int LBRAC
-	.int CHAR
-	.int 48         // character '0'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "':'",3,,TICK_ZERO
+	movi a8, ':'
+	PUSHDATASTACK a8
+	NEXT
 
 //      : '-' [ char - ] literal ;
-	defword "'-'",3,,TICK_DASH
-	.int LBRAC
-	.int CHAR
-	.int '-'         // character '-'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
+	defcode "'-'",3,,TICK_DASH
+	movi a8, '-'
+	PUSHDATASTACK a8
+	NEXT
 
 //      : '.' [ char . ] literal ;
-	defword "'.'",3,,TICK_DOT
-	.int LBRAC
-	.int CHAR
-	.int '.'         // character '.'
-	.int RBRAC
-	.int LITERAL
-	.int EXIT
-*/
+	defcode "'.'",3,,TICK_DOT
+	movi a8, '.'
+	PUSHDATASTACK a8
+	NEXT
 
 // While compiling, '[COMPILE] word' compiles 'word' if it would otherwise be IMMEDIATE.
 //      : [COMPILE] IMMEDIATE
@@ -212,8 +183,8 @@
 //          HERE            \ save location of the offset on the stack
 //          0 ,             \ compile a dummy offset
 //       ;
-/*
-	defword "if",2,F_IMMED,IF
+
+	defword "habba",5,F_IMMED,habba
 	.int BRACKET_TICK
 	.int ZBRANCH
 	.int COMMA
@@ -221,7 +192,8 @@
 	.int 0
 	.int COMMA
 	.int EXIT
-*/
+
+
 //      : THEN IMMEDIATE
 //          DUP
 //          HERE SWAP -     \ calculate the offset from the address saved on the stack
@@ -271,6 +243,7 @@
 //      : BEGIN IMMEDIATE
 //          HERE            \ save location on the stack
 //      ;
+
 	defword "begin",5,F_IMMED,BEGIN
 	.int HERE
 	.int EXIT

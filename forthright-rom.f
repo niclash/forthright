@@ -1,28 +1,28 @@
-: '\n' 10 ;
-: bl   32 ;
-: cr '\n' emit ;
-: space bl emit ;
-: negate 0 swap - ;
-: true  -1 ;
-: false 0 ;
-: not   0= ;
-: literal immediate ['] lit , , ;
-: here dp @ ;
-: ':' [ char : ] literal ;
-: ';' [ char ; ] literal ;
-: '(' [ char ( ] literal ;
-: ')' [ char ) ] literal ;
+\ : '\n' 10 ;
+\ : bl 32 ;
+\ : cr '\n' emit ;
+\ : space bl emit ;
+\ : negate 0 swap - ;
+\ : true  -1 ;
+\ : false 0 ;
+\ : not 0= ;
+\ : literal immediate ['] lit , , ;
+\ : here dp @ ;
+\ : ':' [ char : ] literal ;
+\ : ';' [ char ; ] literal ;
+\ : '(' [ char ( ] literal ;
+\ : ')' [ char ) ] literal ;
 : '"' [ char " ] literal ;
 : 'A' [ char A ] literal ;
 : '0' [ char 0 ] literal ;
 : '-' [ char - ] literal ;
 : '.' [ char . ] literal ;
-: [compile] immediate word (find) >cfa , ;
-: recurse immediate latest @ >cfa , ;
+\ : [compile] immediate word (find) >cfa , ;
+\ : recurse immediate latest @ >cfa , ;
 : if immediate ['] 0branch , here 0 , ;
-: then immediate dup here swap - swap ! ;
+\ : then immediate dup here swap - swap ! ;
 : else immediate ['] branch , here 0 , swap dup here swap - swap ! ;
-: begin immediate here ;
+\ : begin immediate here ;
 : until immediate ['] 0branch , here - , ;
 : again immediate ['] branch , here - , ;
 : while immediate ['] 0branch , here swap 0 , ;
@@ -43,9 +43,9 @@
 	dup 0= until
 	drop
 ;
-: nip swap drop ;
-: tuck swap over ;
-: pick 1+ 4 * dsp@ + @ ;
+\ : nip swap drop ;
+\ : tuck swap over ;
+\ : pick 1+ 4 * dsp@ + @ ;
 : spaces
 	begin
 		dup 0>
@@ -55,8 +55,8 @@
 	repeat
 	drop
 ;
-: decimal 10 base ! ;
-: hex 16 base ! ;
+\ : decimal 10 base ! ;
+\ : hex 16 base ! ;
 : u.
 	base @ u/mod
 	?dup if
@@ -589,19 +589,21 @@ leave-sp leave-sp !
 	while
 		1+
 	repeat
+
 	swap -
 ;
-
 : cstring swap over here swap cmove here + 0 swap c! here ;
 : bye ;
 : unused data-segment-size here data-segment-start - - 4 / ;
-
-cr cr cr
-6 spaces ." Forthright ver 1.0" cr
-." Copyright 2016, Niclas Hedhman" cr
-5 spaces ." All rights reserved." cr cr
-unused . ." cells remaining" cr
-." <ok>" cr
+: welcome
+	cr
+	6 spaces ." Forthright ver 1.0" cr
+	." Copyright 2016, Niclas Hedhman" cr
+	5 spaces ." All rights reserved." cr cr
+	unused . ." cells remaining" cr
+	." <ok>" cr
+;
+welcome
+hide welcome
 init-done
-true echo ( Enable echo )
-
+true echo

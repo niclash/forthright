@@ -146,7 +146,11 @@
 
 	.macro PRINTPOINTER reg
 	mov a2, \reg
-	C_CALL forthright_printHex
+	C_CALL forthright_printHex0
+	.endm
+
+	.macro PRINTNL
+	C_CALL forthright_printNL0
 	.endm
 
 	.macro PRINTWORD linkpointer

@@ -600,7 +600,7 @@
 	on the stack and set Instruction Pointer (a14) to the first word in the definition.
 	Remember that we jumped to the function using
 		l32i a9, a8, 0
-		jx a9"
+		jx a9
 	?  Well a consequence of that is that conveniently
 	a8 contains the address of this codeword, so just by adding 4 to it we get the address of the first
 	data word.  Finally after setting up instruction pointer (a14), it just does NEXT which causes that
@@ -2248,10 +2248,6 @@ _COMMA:
 	and immediate mode).
 
 	This definition of ['] uses a cheat which I copied from buzzard92.  As a result it only works in
-	compiled code.  It is possible to write a version of ['] based on WORD, (FIND), >CFA which works in
-	immediate mode too.
-
-	This definition of ['] uses a cheat which I copied from buzzard92.  As a result it only works in
 	compilied and when the word after it is not an immediate word. It is possible to write a version
 	of ['] which works on immediate word, or to write another version based on WORD, (FIND), >CFA
 	which works in immediate mode too.
@@ -2429,8 +2425,16 @@ L31:	addi a8, a8, 8
 	movi a9, F_IMMED
 	and a9, a8, a9				// is IMMED flag set?
 	mov a8, a2				// save codeword pointer in a8
-	bnez a9, L35				// If IMMED, jump straight to executing.
-	j L33
+	beqz a9, L33				// If IMMED, continue with 'executing', else go check STATE .
+
+L35:	// Executing - run it!
+	READ_VAR a9, system_t_interpret_is_lit	// Was it a literal?
+	bnez a9, L36				// branch if literal
+
+	// Not a literal, execute it now.  This never returns, but the codeword will
+	// eventually call NEXT which will reenter the loop in QUIT.
+	l32i a9, a8, 0				// Read address to jump to
+	jx a9					// Jump to that address
 
 	.literal .ADDR_TO_LIT, LIT
 
@@ -2446,7 +2450,7 @@ L32:	// Not in the dictionary (not a word) so assume it's a literal number.
 	call0 _NUMBER				// Returns the parsed number in a2, a3 > 0 if error
 	bnez a3, L37				// branch if there was an error
 	mov a10, a2				// store number in a10
-	l32r a2, .ADDR_TO_LIT			// The word is LIT, a8 points now points to the code for the literal??
+	l32r a2, .ADDR_TO_LIT			// The word is LIT, a2 points now points to the code for the literal??
 
 L33:	// Are we compiling or executing?
 	READ_VAR a11, system_t_state
@@ -2454,7 +2458,7 @@ L33:	// Are we compiling or executing?
 
 	// Compiling - just append the word to the current dictionary definition.
 	call0 _COMMA				// a2 must contain the integer to be stored, a posibility of
-	 					//    1: a dictionary word pointer returned by _WORD
+	 					//    1: a dictionary code word pointer returned by _WORD
 						//    2: address to LIT, indicating integer returned from _NUMBER,
 	READ_VAR a9, system_t_interpret_is_lit	// Was it a literal?
 	beqz a9, L34
@@ -2462,15 +2466,6 @@ L33:	// Are we compiling or executing?
 	call0 _COMMA
 L34:
 	NEXT
-
-L35:	// Executing - run it!
-	READ_VAR a9, system_t_interpret_is_lit	// Was it a literal?
-	bnez a9, L36				// branch if literal
-
-	// Not a literal, execute it now.  This never returns, but the codeword will
-	// eventually call NEXT which will reenter the loop in QUIT.
-	l32i a9, a8, 0				// Read address to jump to
-	jx a9					// Jump to that address
 
 L36:	// Executing a literal, which means push it on the stack.
 	PUSHDATASTACK a10			// a10 contains the saved integer
@@ -2617,7 +2612,7 @@ L41:
 	ill
 	ill
 
-	.include "words.fasm"
+//	.include "words.fasm"
 
 
 /*	The following declaration makes it possible to get hold of the entry point into
